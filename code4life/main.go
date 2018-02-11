@@ -31,6 +31,10 @@ func ConnectSample(id int) {
 	cmd("CONNECT %d", id)
 }
 
+func ConnectMol(mol string) {
+	cmd("CONNECT " + mol)
+}
+
 const MoleculeCount = 5
 
 type Player struct {
@@ -50,6 +54,8 @@ const (
 	D = 3
 	E = 4
 )
+
+var MolName = [5]string{"A", "B", "C", "D", "E"}
 
 type Sample struct {
 	ID            int
@@ -113,20 +119,41 @@ func main() {
 			debug("on diag target")
 			id := findBestFreeSample(samples)
 			debug("get sample %d", id)
-			ConnectSample(id)
+			ConnectSample(samples[id].ID)
 			continue
 		}
 
 		debug("carrying some samples %d", carriedSample)
-		if !enoughMolecules(p[0], carriedSample, sampleCount) {
+		if mol, ok := enoughMolecules(p[0], samples[carriedSample]); !ok {
 			debug("no enough molecules")
 			if p[0].Target != MOLE {
 				Goto(MOLE)
 				continue
 			}
-			findMolecule(p[0], sam)
+			ConnectMol(mol)
+			continue
+		}
+
+		debug("enough molecule")
+		if p[0].Target != LABO {
+			Goto(LABO)
+			continue
+		}
+		debug("send to lab %d", carriedSample)
+		ConnectSample(samples[carriedSample].ID)
+	}
+}
+
+func enoughMolecules(p Player, sid Sample) (string, bool) {
+	debug("health %d", sid.Health)
+	debug("storage %d", p.Storage)
+	debug("cost %d", sid.MoleculeCost)
+	for mol, cost := range sid.MoleculeCost {
+		if cost > p.Storage[mol] {
+			return MolName[mol], false
 		}
 	}
+	return "", true
 }
 
 func findBestFreeSample(samples []Sample) int {
@@ -136,6 +163,7 @@ func findBestFreeSample(samples []Sample) int {
 			continue
 		}
 		if s.Health > health {
+			health = s.Health
 			bestID = id
 		}
 	}
@@ -143,9 +171,9 @@ func findBestFreeSample(samples []Sample) int {
 }
 
 func sampleCarried(samples []Sample, carried *int) bool {
-	for _, s := range samples {
+	for id, s := range samples {
 		if s.CarriedBy == ME {
-			*carried = s.CarriedBy
+			*carried = id
 			return true
 		}
 	}

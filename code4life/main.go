@@ -25,6 +25,10 @@ func Goto(target string) {
 	cmd("GOTO " + target)
 }
 
+func Wait() {
+	cmd("WAIT")
+}
+
 func ConnectSample(id Sid) {
 	cmd("CONNECT %d", id)
 }
@@ -67,9 +71,13 @@ type Sample struct {
 	ID            Sid
 	CarriedBy     int
 	Rank          int
-	ExpertiseGain string
+	ExpertiseGain string // indicates the molecule for which expertise is gain
 	Health        int
 	MoleculeCost  [MoleculeCount]int
+}
+
+func (s Sample) Diagnosed() bool {
+	return s.MoleculeCost[A] != -1
 }
 
 const (
@@ -83,7 +91,6 @@ const NoSample = -1
 const ME = 0
 
 func main() {
-	diagnosed := make(map[Sid]bool)
 	var projectCount int
 	fmt.Scan(&projectCount)
 
@@ -116,6 +123,28 @@ func main() {
 
 		debug("sample count: %d", sampleCount)
 
+		/*
+					TODO:
+					 - movement may take more than one turn:
+					 Robot Movement Matrix
+
+			  					SAMPLES 	DIAGNOSIS 	MOLECULES 	LABORATORY
+					Start area 		2 			2 			2 			2
+					SAMPLES 		0 			3 			3 			3
+					DIAGNOSIS 		3 			0 			3 			4
+					MOLECULES 		3 			3 			0 			3
+					LABORATORY 		3 			4 			3 			0
+
+					Get samples:
+					  - multiple rank : more rank -> more molecules and more points
+					Diagnozed them
+					  - determine the needed modulecules
+					  - if one molecule > 5 -> Put in the cloud (MOLE only give 5 max)
+					  - if TotalMolecule > 10 (amount a robot can hold) -> Put in the cloud (connect a diagnosed sample to DIAG)
+					Collect molecule
+					Send to labo
+		*/
+
 		var carriedSample int
 		if !sampleCarried(samples, &carriedSample) {
 			debug("no samples carried")
@@ -130,7 +159,7 @@ func main() {
 					continue
 				} else {
 					debug("ask undiagnosed samples target")
-					ConnectRank(Rank(2))
+					ConnectRank(Rank(1))
 					continue
 				}
 			} else {
@@ -146,9 +175,9 @@ func main() {
 		}
 
 		debug("carrying some samples %d", carriedSample)
-		debug("sample %d is diagnozed: %t", carriedSample, diagnosed[samples[carriedSample].ID])
+		debug("sample %d is diagnozed: %t", carriedSample, samples[carriedSample].Diagnosed())
 
-		if !diagnosed[samples[carriedSample].ID] {
+		if !samples[carriedSample].Diagnosed() {
 			if p[0].Target != DIAG {
 				debug("not on diag target")
 				Goto(DIAG)
@@ -156,7 +185,6 @@ func main() {
 			} else {
 				debug("diagonzed sample %d", samples[carriedSample].ID)
 				ConnectSample(samples[carriedSample].ID)
-				diagnosed[samples[carriedSample].ID] = true
 				continue
 			}
 		} else {

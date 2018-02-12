@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-//import "os"
-
 /**
  * Bring data on patient samples from the diagnosis machine to the laboratory with enough molecules to produce medicine!
  **/
@@ -27,7 +25,11 @@ func Goto(target string) {
 	cmd("GOTO " + target)
 }
 
-func ConnectSample(id int) {
+func ConnectSample(id Sid) {
+	cmd("CONNECT %d", id)
+}
+
+func ConnectRank(id Rank) {
 	cmd("CONNECT %d", id)
 }
 
@@ -57,8 +59,12 @@ const (
 
 var MolName = [5]string{"A", "B", "C", "D", "E"}
 
+type Rank int
+
+type Sid int
+
 type Sample struct {
-	ID            int
+	ID            Sid
 	CarriedBy     int
 	Rank          int
 	ExpertiseGain string
@@ -67,14 +73,17 @@ type Sample struct {
 }
 
 const (
+	SAMP = "SAMPLES"
 	DIAG = "DIAGNOSIS"
 	MOLE = "MOLECULES"
 	LABO = "LABORATORY"
 )
 
+const NoSample = -1
 const ME = 0
 
 func main() {
+	diagnosed := make(map[Sid]bool)
 	var projectCount int
 	fmt.Scan(&projectCount)
 
@@ -110,37 +119,65 @@ func main() {
 		var carriedSample int
 		if !sampleCarried(samples, &carriedSample) {
 			debug("no samples carried")
+
+			id := findBestFreeSample(samples)
+
+			if id == NoSample {
+				debug("no samples available")
+				if p[0].Target != SAMP {
+					debug("not on samp target")
+					Goto(SAMP)
+					continue
+				} else {
+					debug("ask undiagnosed samples target")
+					ConnectRank(Rank(2))
+					continue
+				}
+			} else {
+				if p[0].Target != DIAG {
+					debug("want sample %s, but not on diag target", samples[id].ID)
+					Goto(DIAG)
+					continue
+				}
+				debug("get sample %d", id)
+				ConnectSample(samples[id].ID)
+				continue
+			}
+		}
+
+		debug("carrying some samples %d", carriedSample)
+		debug("sample %d is diagnozed: %t", carriedSample, diagnosed[samples[carriedSample].ID])
+
+		if !diagnosed[samples[carriedSample].ID] {
 			if p[0].Target != DIAG {
 				debug("not on diag target")
 				Goto(DIAG)
 				continue
-			}
-
-			debug("on diag target")
-			id := findBestFreeSample(samples)
-			debug("get sample %d", id)
-			ConnectSample(samples[id].ID)
-			continue
-		}
-
-		debug("carrying some samples %d", carriedSample)
-		if mol, ok := enoughMolecules(p[0], samples[carriedSample]); !ok {
-			debug("no enough molecules")
-			if p[0].Target != MOLE {
-				Goto(MOLE)
+			} else {
+				debug("diagonzed sample %d", samples[carriedSample].ID)
+				ConnectSample(samples[carriedSample].ID)
+				diagnosed[samples[carriedSample].ID] = true
 				continue
 			}
-			ConnectMol(mol)
-			continue
-		}
+		} else {
+			if mol, ok := enoughMolecules(p[0], samples[carriedSample]); !ok {
+				debug("no enough molecules")
+				if p[0].Target != MOLE {
+					Goto(MOLE)
+					continue
+				}
+				ConnectMol(mol)
+				continue
+			}
 
-		debug("enough molecule")
-		if p[0].Target != LABO {
-			Goto(LABO)
-			continue
+			debug("enough molecule")
+			if p[0].Target != LABO {
+				Goto(LABO)
+				continue
+			}
+			debug("send to lab %d", carriedSample)
+			ConnectSample(samples[carriedSample].ID)
 		}
-		debug("send to lab %d", carriedSample)
-		ConnectSample(samples[carriedSample].ID)
 	}
 }
 

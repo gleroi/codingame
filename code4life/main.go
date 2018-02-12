@@ -128,12 +128,13 @@ func main() {
 					 - movement may take more than one turn:
 					 Robot Movement Matrix
 
-			  					SAMPLES 	DIAGNOSIS 	MOLECULES 	LABORATORY
 					Start area 		2 			2 			2 			2
+			  					SAMPLES 	DIAGNOSIS 	MOLECULES 	LABORATORY
 					SAMPLES 		0 			3 			3 			3
 					DIAGNOSIS 		3 			0 			3 			4
 					MOLECULES 		3 			3 			0 			3
 					LABORATORY 		3 			4 			3 			0
+
 
 					Get samples:
 					  - multiple rank : more rank -> more molecules and more points
@@ -141,6 +142,7 @@ func main() {
 					  - determine the needed modulecules
 					  - if one molecule > 5 -> Put in the cloud (MOLE only give 5 max)
 					  - if TotalMolecule > 10 (amount a robot can hold) -> Put in the cloud (connect a diagnosed sample to DIAG)
+					  - if one molecule > available molecule -> Put in the cloud (???)
 					Collect molecule
 					Send to labo
 		*/

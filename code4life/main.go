@@ -43,8 +43,8 @@ func ConnectSample(id Sid) {
 	cmd("CONNECT %d", id)
 }
 
-func ConnectRank(id RankID) {
-	cmd("CONNECT %d", id)
+func ConnectRank(id RankID, cmt string) {
+	cmd("CONNECT %d %s", id, cmt)
 }
 
 func ConnectMol(mol string) {
@@ -221,7 +221,7 @@ func SamplesState(p Player, samples []Sample, available Molecules) {
 			}
 		}
 		debug("ask undiagnosed samples target (rk %d)", rank)
-		ConnectRank(RankID(rank))
+		ConnectRank(RankID(rank), fmt.Sprintf("carrying %d", len(carried)))
 	} else {
 		Goto(DIAG)
 	}
@@ -239,6 +239,20 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 	if len(undiagnosed) > 0 {
 		ConnectSample(samples[undiagnosed[0]].ID)
 	} else {
+		if len(carried) <= 0 {
+			Goto(SAMP)
+			return
+		}
+
+		// get uncomplete sample and put back those that cannot be completed
+		uncompleted := sampleUncompleted(p, carried, samples)
+		impossible := sampleImpossibleToComplete(p, uncompleted, available, samples)
+
+		if len(impossible) > 0 {
+			ConnectSample(samples[impossible[0]].ID)
+			return
+		}
+
 		Goto(MOLE)
 	}
 }
@@ -311,6 +325,25 @@ func LaboratoryState(p Player, samples []Sample, available Molecules) {
 		}
 	}
 	ConnectSample(samples[bestId].ID)
+}
+
+func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, samples []Sample) []int {
+	result := make([]int, 0, len(carried))
+	for _, id := range carried {
+		s := samples[id]
+
+		possible := true
+		for mol, cost := range s.MoleculeCost {
+			if p.Cost(mol, cost) > availables[mol] {
+				possible = false
+				break
+			}
+		}
+		if !possible {
+			result = append(result, id)
+		}
+	}
+	return result
 }
 
 func sampleCompleted(p Player, carried []int, samples []Sample) []int {

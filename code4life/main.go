@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -145,7 +146,9 @@ func main() {
 			fmt.Scan(&samples[i].ID, &samples[i].CarriedBy, &samples[i].Rank, &samples[i].ExpertiseGain, &samples[i].Health,
 				&samples[i].MoleculeCost[A], &samples[i].MoleculeCost[B], &samples[i].MoleculeCost[C], &samples[i].MoleculeCost[D], &samples[i].MoleculeCost[E])
 		}
-
+		sort.Slice(samples, func(i, j int) bool {
+			return samples[i].Health >= samples[j].Health
+		})
 		debug("sample count: %d", sampleCount)
 
 		/*
@@ -250,13 +253,15 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 
 	debug("Storage is %d", p.Storage)
 	if sum(p.Storage[:]) < 10 {
+		// while there is less than 10 mol in store
+		// if there is some incomplete samples, try to fullfill
+		// as much sample as possible
+		// Todo: take more molecule than needed to prevent opponent to fullfill
 		uncompleted := sampleUncompleted(p, carried, samples)
 		debug("%d uncompleted samples", len(uncompleted))
-
 		for _, id := range uncompleted {
 			s := samples[id]
 			debug("sample %d cost: %d", id, s.MoleculeCost)
-			debug("sample %d gain: %d", id, s.ExpertiseGain)
 			for mol, cost := range s.MoleculeCost {
 				if p.Cost(mol, cost)-p.Storage[mol] <= 0 {
 					continue

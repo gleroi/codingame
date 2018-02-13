@@ -114,6 +114,7 @@ const (
 
 const NoSample = -1
 const ME = 0
+const NoBody = 0
 
 func main() {
 	var projectCount int
@@ -239,6 +240,16 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 	if len(undiagnosed) > 0 {
 		ConnectSample(samples[undiagnosed[0]].ID)
 	} else {
+		if len(carried) < 3 {
+			// check cloud for completable sample
+			uncarried := sampleUncarried(samples)
+			possible := samplePossibleToComplete(p, uncarried, available, samples)
+			if len(possible) > 0 {
+				ConnectSample(samples[possible[0]].ID)
+				return
+			}
+		}
+
 		if len(carried) <= 0 {
 			Goto(SAMP)
 			return
@@ -249,6 +260,8 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 		impossible := sampleImpossibleToComplete(p, uncompleted, available, samples)
 
 		if len(impossible) > 0 {
+			debug("available: %d", available)
+			debug("sample %d: %d", samples[impossible[0]].ID, samples[impossible[0]].MoleculeCost)
 			ConnectSample(samples[impossible[0]].ID)
 			return
 		}
@@ -346,6 +359,25 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 	return result
 }
 
+func samplePossibleToComplete(p Player, carried []int, availables Molecules, samples []Sample) []int {
+	result := make([]int, 0, len(carried))
+	for _, id := range carried {
+		s := samples[id]
+
+		possible := true
+		for mol, cost := range s.MoleculeCost {
+			if p.Cost(mol, cost) > availables[mol] {
+				possible = false
+				break
+			}
+		}
+		if possible {
+			result = append(result, id)
+		}
+	}
+	return result
+}
+
 func sampleCompleted(p Player, carried []int, samples []Sample) []int {
 	result := make([]int, 0, len(carried))
 	for _, id := range carried {
@@ -403,4 +435,14 @@ func sampleCarried(samples []Sample) []int {
 		}
 	}
 	return carried
+}
+
+func sampleUncarried(samples []Sample) []int {
+	uncarried := make([]int, 0, 3)
+	for id, s := range samples {
+		if s.CarriedBy == NoBody {
+			uncarried = append(uncarried, id)
+		}
+	}
+	return uncarried
 }

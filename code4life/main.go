@@ -283,7 +283,6 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 		// while there is less than 10 mol in store
 		// if there is some incomplete samples, try to fullfill
 		// as much sample as possible
-		// Todo: take more molecule than needed to prevent opponent to fullfill
 		uncompleted := sampleUncompleted(p, carried, samples)
 		debug("%d uncompleted samples", len(uncompleted))
 		for _, id := range uncompleted {
@@ -300,6 +299,11 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 				return
 			}
 		}
+
+		// take more molecule than needed to prevent opponent to fullfill
+		mol := mostAvailableMolecule(available)
+		ConnectMol(MolName[mol])
+		return
 	}
 
 	completed := sampleCompleted(p, carried, samples)
@@ -347,7 +351,7 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if p.Cost(mol, cost) > availables[mol] {
+			if canComplete(p, mol, cost, availables) {
 				possible = false
 				break
 			}
@@ -359,6 +363,10 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 	return result
 }
 
+func canComplete(p Player, mol int, cost int, availables Molecules) bool {
+	return p.Cost(mol, cost)-p.Storage[mol] > availables[mol]
+}
+
 func samplePossibleToComplete(p Player, carried []int, availables Molecules, samples []Sample) []int {
 	result := make([]int, 0, len(carried))
 	for _, id := range carried {
@@ -366,7 +374,7 @@ func samplePossibleToComplete(p Player, carried []int, availables Molecules, sam
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if p.Cost(mol, cost) > availables[mol] {
+			if canComplete(p, mol, cost, availables) {
 				possible = false
 				break
 			}
@@ -445,4 +453,15 @@ func sampleUncarried(samples []Sample) []int {
 		}
 	}
 	return uncarried
+}
+
+func mostAvailableMolecule(availables Molecules) int {
+	max, imax := -1, -1
+	for id, s := range availables {
+		if s > max {
+			max = s
+			imax = id
+		}
+	}
+	return imax
 }

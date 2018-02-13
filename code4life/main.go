@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 /**
@@ -59,6 +60,10 @@ type Player struct {
 	Expertise [MoleculeCount]int
 }
 
+func (p Player) Cost(mol int, cost int) int {
+	return cost - p.Expertise[mol]
+}
+
 type Molecules [MoleculeCount]int
 
 const (
@@ -92,7 +97,7 @@ type Sample struct {
 	Rank          int
 	ExpertiseGain string // indicates the molecule for which expertise is gain
 	Health        int
-	MoleculeCost  [MoleculeCount]int
+	MoleculeCost  Molecules
 }
 
 func (s Sample) Diagnosed() bool {
@@ -119,6 +124,8 @@ func main() {
 	}
 
 	for {
+		start := time.Now()
+
 		var p [2]Player
 
 		for i := 0; i < 2; i++ {
@@ -164,112 +171,198 @@ func main() {
 					Collect molecule
 					Send to labo
 		*/
-
-		var carriedSample int
-		if !sampleCarried(samples, &carriedSample) {
-			debug("no samples carried")
-
-			id := findBestFreeSample(samples)
-
-			if id == NoSample {
-				debug("no samples available")
-				if p[0].Target != SAMP {
-					debug("not on samp target")
-					Goto(SAMP)
-					continue
-				} else {
-					rank := 3
-					totalExpertise := sum(p[0].Expertise[:])
-					debug("expertise is %d (total: %d)", p[0].Expertise, totalExpertise)
-
-					for ; rank > 1; rank-- {
-						if Ranks[rank].CostMax-totalExpertise < 5 {
-							break
-						}
-					}
-					debug("ask undiagnosed samples target (rk %d)", rank)
-					ConnectRank(RankID(rank))
-					continue
-				}
-			} else {
-				if p[0].Target != DIAG {
-					debug("want sample %s, but not on diag target", samples[id].ID)
-					Goto(DIAG)
-					continue
-				}
-				debug("get sample %d", id)
-				ConnectSample(samples[id].ID)
-				continue
-			}
-		}
-
-		debug("carrying some samples %d", carriedSample)
-		debug("sample %d is diagnozed: %t", carriedSample, samples[carriedSample].Diagnosed())
-
-		if !samples[carriedSample].Diagnosed() {
-			if p[0].Target != DIAG {
-				debug("not on diag target")
-				Goto(DIAG)
-				continue
-			} else {
-				debug("diagonzed sample %d", samples[carriedSample].ID)
-				ConnectSample(samples[carriedSample].ID)
-				continue
-			}
+		debug("target is %s", p[0].Target)
+		state, ok := states[p[0].Target]
+		if !ok {
+			StartGame(p[0], samples, available)
 		} else {
-			if mol, ok := enoughMolecules(p[0], samples[carriedSample]); !ok {
-				debug("no enough molecules")
-				if p[0].Target != MOLE {
-					Goto(MOLE)
+			state(p[0], samples, available)
+		}
+		end := time.Now()
+		debug("Turn completed in %fms", end.Sub(start).Nanoseconds()/1000000.0)
+	}
+}
+
+var states = map[string]func(p Player, samples []Sample, available Molecules){
+	SAMP: SamplesState,
+	DIAG: DiagnosisState,
+	MOLE: MoleculesState,
+	LABO: LaboratoryState,
+}
+
+func StartGame(p Player, samples []Sample, available Molecules) {
+	if p.Eta != 0 {
+		Wait()
+		return
+
+	}
+	Goto(SAMP)
+}
+
+func SamplesState(p Player, samples []Sample, available Molecules) {
+	if p.Eta != 0 {
+		Wait()
+		return
+	}
+
+	carried := sampleCarried(samples)
+	debug("%d samples carried", len(carried))
+	if len(carried) < 3 {
+		rank := 3
+		totalExpertise := sum(p.Expertise[:])
+		debug("expertise is %d (total: %d)", p.Expertise, totalExpertise)
+
+		for ; rank > 1; rank-- {
+			if Ranks[rank].CostMax-totalExpertise < 5 {
+				break
+			}
+		}
+		debug("ask undiagnosed samples target (rk %d)", rank)
+		ConnectRank(RankID(rank))
+	} else {
+		Goto(DIAG)
+	}
+}
+
+func DiagnosisState(p Player, samples []Sample, available Molecules) {
+	if p.Eta != 0 {
+		Wait()
+		return
+	}
+
+	carried := sampleCarried(samples)
+	undiagnosed := sampleUndiagnosed(carried, samples)
+
+	if len(undiagnosed) > 0 {
+		ConnectSample(samples[undiagnosed[0]].ID)
+	} else {
+		Goto(MOLE)
+	}
+}
+
+func MoleculesState(p Player, samples []Sample, available Molecules) {
+	if p.Eta != 0 {
+		Wait()
+		return
+	}
+
+	carried := sampleCarried(samples)
+
+	debug("Storage is %d", p.Storage)
+	if sum(p.Storage[:]) < 10 {
+		uncompleted := sampleUncompleted(p, carried, samples)
+		debug("%d uncompleted samples", len(uncompleted))
+
+		for _, id := range uncompleted {
+			s := samples[id]
+			debug("sample %d cost: %d", id, s.MoleculeCost)
+			debug("sample %d gain: %d", id, s.ExpertiseGain)
+			for mol, cost := range s.MoleculeCost {
+				if p.Cost(mol, cost)-p.Storage[mol] <= 0 {
 					continue
 				}
-				ConnectMol(mol)
-				continue
+				if available[mol] <= 0 {
+					continue
+				}
+				ConnectMol(MolName[mol])
+				return
 			}
-
-			debug("enough molecule")
-			if p[0].Target != LABO {
-				Goto(LABO)
-				continue
-			}
-			debug("send to lab %d", carriedSample)
-			ConnectSample(samples[carriedSample].ID)
 		}
 	}
-}
 
-func enoughMolecules(p Player, sid Sample) (string, bool) {
-	debug("health %d", sid.Health)
-	debug("storage %d", p.Storage)
-	debug("cost %d", sid.MoleculeCost)
-	for mol, cost := range sid.MoleculeCost {
-		if cost > p.Storage[mol] {
-			return MolName[mol], false
-		}
+	completed := sampleCompleted(p, carried, samples)
+	if len(completed) <= 0 {
+		Wait()
+		return
 	}
-	return "", true
+	Goto(LABO)
+	return
 }
 
-func findBestFreeSample(samples []Sample) int {
-	health, bestID := -1, -1
-	for id, s := range samples {
-		if s.CarriedBy != -1 {
-			continue
-		}
+func LaboratoryState(p Player, samples []Sample, available Molecules) {
+	if p.Eta != 0 {
+		Wait()
+		return
+	}
+
+	carried := sampleCarried(samples)
+	completed := sampleCompleted(p, carried, samples)
+
+	if len(carried) == 0 {
+		Goto(SAMP)
+		return
+	}
+	if len(completed) == 0 {
+		Goto(MOLE)
+		return
+	}
+
+	health, bestId := -1, -1
+	for _, id := range completed {
+		s := samples[id]
 		if s.Health > health {
 			health = s.Health
-			bestID = id
+			bestId = id
 		}
 	}
-	return bestID
+	ConnectSample(samples[bestId].ID)
 }
 
-func sampleCarried(samples []Sample, carried *int) bool {
-	for id, s := range samples {
-		if s.CarriedBy == ME {
-			*carried = id
-			return true
+func sampleCompleted(p Player, carried []int, samples []Sample) []int {
+	result := make([]int, 0, len(carried))
+	for _, id := range carried {
+		s := samples[id]
+
+		completed := true
+		for mol, cost := range s.MoleculeCost {
+			if p.Cost(mol, cost) > p.Storage[mol] {
+				completed = false
+				break
+			}
+		}
+		if completed {
+			result = append(result, id)
 		}
 	}
-	return false
+	return result
+}
+
+func sampleUncompleted(p Player, carried []int, samples []Sample) []int {
+	result := make([]int, 0, len(carried))
+	for _, id := range carried {
+		s := samples[id]
+
+		completed := true
+		for mol, cost := range s.MoleculeCost {
+			if p.Cost(mol, cost) > p.Storage[mol] {
+				completed = false
+				break
+			}
+		}
+		if !completed {
+			result = append(result, id)
+		}
+	}
+	return result
+}
+
+func sampleUndiagnosed(ids []int, samples []Sample) []int {
+	undiag := make([]int, 0, len(samples))
+	for _, id := range ids {
+		s := samples[id]
+		if !s.Diagnosed() {
+			undiag = append(undiag, id)
+		}
+	}
+	return undiag
+}
+
+func sampleCarried(samples []Sample) []int {
+	carried := make([]int, 0, 3)
+	for id, s := range samples {
+		if s.CarriedBy == ME {
+			carried = append(carried, id)
+		}
+	}
+	return carried
 }

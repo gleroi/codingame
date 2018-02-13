@@ -182,7 +182,7 @@ func main() {
 			state(p[0], samples, available)
 		}
 		end := time.Now()
-		debug("Turn completed in %fms", end.Sub(start).Nanoseconds()/1000000.0)
+		debug("Turn completed in %dms", end.Sub(start).Nanoseconds()/1000000.0)
 	}
 }
 

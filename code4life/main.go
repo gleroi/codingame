@@ -9,6 +9,14 @@ import (
  * Bring data on patient samples from the diagnosis machine to the laboratory with enough molecules to produce medicine!
  **/
 
+func sum(s []int) int {
+	acc := 0
+	for _, v := range s {
+		acc += v
+	}
+	return acc
+}
+
 func debug(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", v...)
 }
@@ -33,7 +41,7 @@ func ConnectSample(id Sid) {
 	cmd("CONNECT %d", id)
 }
 
-func ConnectRank(id Rank) {
+func ConnectRank(id RankID) {
 	cmd("CONNECT %d", id)
 }
 
@@ -63,7 +71,18 @@ const (
 
 var MolName = [5]string{"A", "B", "C", "D", "E"}
 
-type Rank int
+type RankID int
+
+type Rank struct {
+	CostMin, CostMax int
+}
+
+var Ranks = []Rank{
+	Rank{},
+	Rank{CostMin: 3, CostMax: 5},
+	Rank{CostMin: 4, CostMax: 8},
+	Rank{CostMin: 7, CostMax: 14},
+}
 
 type Sid int
 
@@ -103,7 +122,6 @@ func main() {
 		var p [2]Player
 
 		for i := 0; i < 2; i++ {
-			debug("reading player %d", i)
 			fmt.Scan(&p[i].Target, &p[i].Eta, &p[i].Score,
 				&p[i].Storage[A], &p[i].Storage[B], &p[i].Storage[C], &p[i].Storage[D], &p[i].Storage[E],
 				&p[i].Expertise[A], &p[i].Expertise[B], &p[i].Expertise[C], &p[i].Expertise[D], &p[i].Expertise[E])
@@ -160,8 +178,17 @@ func main() {
 					Goto(SAMP)
 					continue
 				} else {
-					debug("ask undiagnosed samples target")
-					ConnectRank(Rank(1))
+					rank := 3
+					totalExpertise := sum(p[0].Expertise[:])
+					debug("expertise is %d (total: %d)", p[0].Expertise, totalExpertise)
+
+					for ; rank > 1; rank-- {
+						if Ranks[rank].CostMax-totalExpertise < 5 {
+							break
+						}
+					}
+					debug("ask undiagnosed samples target (rk %d)", rank)
+					ConnectRank(RankID(rank))
 					continue
 				}
 			} else {

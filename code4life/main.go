@@ -57,11 +57,16 @@ const ProjectHealth = 50
 type Project [MoleculeCount]int
 
 func healthForProject(p Project, s Sample) float64 {
+	//TODO: project is based on experience not on molecule used.
+	//TODO: use player experience to weight health gain
 	health := 0.0
-	totalMol := float64(sum(p[:]))
-	for mol, molCount := range p {
-		molHealth := float64(molCount) * (totalMol / float64(ProjectHealth))
-		health += float64(s.MoleculeCost[mol]) * (molHealth / float64(molCount))
+	totalExp := float64(sum(p[:]))
+	for mol, exp := range p {
+		if exp > 0 {
+			if s.ExpertiseGain == MolName[mol] {
+				health += ProjectHealth / totalExp
+			}
+		}
 	}
 	return health
 }
@@ -329,6 +334,7 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 
 	completed := sampleCompleted(p, carried, samples)
 	if len(completed) <= 0 {
+		//TODO: check if i can swith with something from cloud
 		Wait()
 		return
 	}

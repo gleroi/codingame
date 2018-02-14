@@ -52,6 +52,27 @@ func ConnectMol(mol string) {
 }
 
 const MoleculeCount = 5
+const ProjectHealth = 50
+
+type Project [MoleculeCount]int
+
+func healthForProject(p Project, s Sample) float64 {
+	health := 0.0
+	totalMol := float64(sum(p[:]))
+	for mol, molCount := range p {
+		molHealth := float64(molCount) * (totalMol / float64(ProjectHealth))
+		health += float64(s.MoleculeCost[mol]) * (molHealth / float64(molCount))
+	}
+	return health
+}
+
+func healthForProjects(ps []Project, s Sample) float64 {
+	health := 0.0
+	for _, p := range ps {
+		health += healthForProject(p, s)
+	}
+	return health
+}
 
 type Player struct {
 	Target    string
@@ -120,9 +141,9 @@ func main() {
 	var projectCount int
 	fmt.Scan(&projectCount)
 
+	projects := make([]Project, projectCount)
 	for i := 0; i < projectCount; i++ {
-		var a, b, c, d, e int
-		fmt.Scan(&a, &b, &c, &d, &e)
+		fmt.Scan(&projects[i][A], &projects[i][B], &projects[i][C], &projects[i][D], &projects[i][E])
 	}
 
 	for {
@@ -148,7 +169,9 @@ func main() {
 				&samples[i].MoleculeCost[A], &samples[i].MoleculeCost[B], &samples[i].MoleculeCost[C], &samples[i].MoleculeCost[D], &samples[i].MoleculeCost[E])
 		}
 		sort.Slice(samples, func(i, j int) bool {
-			return samples[i].Health >= samples[j].Health
+			si := healthForProjects(projects, samples[i])
+			sj := healthForProjects(projects, samples[j])
+			return float64(samples[i].Health)+si >= float64(samples[j].Health)+sj
 		})
 		debug("sample count: %d", sampleCount)
 
@@ -300,10 +323,8 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 			}
 		}
 
-		// take more molecule than needed to prevent opponent to fullfill
-		mol := mostAvailableMolecule(available)
-		ConnectMol(MolName[mol])
-		return
+		//TODO: take more molecule than needed to prevent opponent to fullfill
+		// or to optimize for sample in cloud
 	}
 
 	completed := sampleCompleted(p, carried, samples)

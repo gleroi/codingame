@@ -48,10 +48,6 @@ func possible(p Pt) bool {
 }
 
 func main() {
-	// lightX: the X position of the light of power
-	// lightY: the Y position of the light of power
-	// initialTX: Thor's starting X position
-	// initialTY: Thor's starting Y position
 	var thor Pt
 	var light Pt
 	fmt.Scan(&light.X, &light.Y, &thor.X, &thor.Y)
@@ -60,8 +56,6 @@ func main() {
 		// remainingTurns: The remaining amount of turns Thor can move. Do not remove this line.
 		var remainingTurns int
 		fmt.Scan(&remainingTurns)
-
-		// fmt.Fprintln(os.Stderr, "Debug messages...")
 
 		var direction Direction
 		d := distance(thor, light)

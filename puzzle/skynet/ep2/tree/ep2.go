@@ -101,6 +101,17 @@ func (p *Paths) Get(n1 int) int {
 	return p.Costs[n1]
 }
 
+func (p *Paths) FindClosest(from int, tos []int) int {
+	closest, best := math.MaxInt32, -1
+	for _, to := range tos {
+		if p.Get(to) < closest {
+			closest = p.Get(to)
+			best = to
+		}
+	}
+	return best
+}
+
 func dequeue(l []int) (int, []int) {
 	n := l[0]
 	return n, l[1:]
@@ -131,6 +142,14 @@ func (g *Graph) ComputePathsFrom(agt int) *Paths {
 	return paths
 }
 
+func (g *Graph) Move(from int, to int, paths *Paths) int {
+	closest := paths.FindClosest(from, g.LinksOf[to])
+	if closest == from {
+		return to
+	}
+	return g.Move(from, closest, paths)
+}
+
 // LinkToCut returns the node to cut on the shortest to exit from agent and the cost
 // of this path
 func (g *Graph) LinkToCut(paths *Paths, exit int) (int, int) {
@@ -146,103 +165,113 @@ func (g *Graph) LinkToCut(paths *Paths, exit int) (int, int) {
 	return n, cost
 }
 
-func search(g *Graph, agt int) (int, int) {
-
-	// if all neighbour have a cost <= to the number of exit
-	// cut link to exit with most nodes
-	//TODO: rework this part of the strategy, probably need a tree of all decision :(
-	paths := g.ComputePathsFrom(agt)
-	exitsNeighbors := make([]int, g.Nodes)
-	for _, e := range g.Exits {
-		for _, n2 := range g.LinksOf[e] {
-			exitsNeighbors[n2] += 1
-		}
-	}
-	good := true
-	for n, exitCount := range exitsNeighbors {
-		if exitCount > paths.Get(n) {
-			fmt.Fprintf(os.Stderr, "invalid by node %d: cost: %d, exitCount: %d\n", n, paths.Get(n), exitCount)
-			good = false
-		}
-	}
-	max := 0
-	if good {
-		bestN := 0
-		for n, exitCount := range exitsNeighbors {
-			if exitCount > max {
-				max = exitCount
-				bestN = n
-			}
-		}
-		for _, e := range g.Exits {
-			if indexOf(g.LinksOf[e], bestN) != -1 {
-				return e, bestN
-			}
-		}
-	}
-
-	// this part works, but only when one gate is at risk. If no gate is at risk no
-	// solution is found.
-	for _, n1 := range g.Exits {
-		for _, n2 := range g.LinksOf[n1] {
-			g1 := g.Clone()
-			g1.RemoveLink(n1, n2)
-			paths := g1.ComputePathsFrom(agt)
-
-			exitsNeighbors := make([]int, g.Nodes)
-			for _, e := range g1.Exits {
-				for _, n2 := range g1.LinksOf[e] {
-					exitsNeighbors[n2] += 1
-				}
-			}
-
-			// good if all neightbors should have a cost <= to the number of exit
-			fmt.Fprintf(os.Stderr, "%d -> %d\n", n1, n2)
-			for n, exitCount := range exitsNeighbors {
-				if exitCount == 0 {
-					continue
-				}
-				fmt.Fprintf(os.Stderr, "%d: %d, ", n, exitCount)
-			}
-			fmt.Fprintln(os.Stderr)
-			good := true
-			for n, exitCount := range exitsNeighbors {
-				if exitCount > paths.Get(n) {
-					fmt.Fprintf(os.Stderr, "invalid by node %d: cost: %d, exitCount: %d\n", n, paths.Get(n), exitCount)
-					good = false
-				}
-			}
-			if good {
-				return n1, n2
-			}
-		}
-	}
-	panic("no solution!")
+type Sol struct {
+	Exit, Node int
 }
 
-func main() {
+func search(g *Graph, agt int, visited []bool, indent int) (Sol, int) {
+
+	// fmt.Fprintf(os.Stderr, "agt: %d, visited: %v\n", agt, prevVisited)
+	/*
+			  recursive search of the solution:
+			  - agent on exit -> Empty solution, 1 fail
+			  - no links on any exit -> Empty solution, 0 fail (success!)
+			  - exit with links
+			  	- remove a link
+				- for all possible agent move
+		      	  - search and collect sol, fail count
+			    - removing this link is a good solution if fail = 0
+	*/
+	reached := indexOf(g.Exits, agt)
+	if reached != -1 {
+		return Sol{0, 0}, 1
+	}
+
+	success := true
+	for _, exit := range g.Exits {
+		if len(g.LinksOf[exit]) != 0 {
+			success = false
+			break
+		}
+	}
+	if success {
+		return Sol{0, 0}, 0
+	}
+
+	visited[agt] = true
+	defer func() { visited[agt] = false }()
+
+	for _, exit := range g.Exits {
+		for _, n1 := range g.LinksOf[exit] {
+			// fmt.Fprintf(os.Stderr, "%sagt: %d %d -> %d\n", strings.Repeat(" ", indent), agt, exit, n1)
+
+			g1 := g.Clone()
+			g1.RemoveLink(exit, n1)
+
+			sol := Sol{Exit: exit, Node: n1}
+			fail := 0
+			for _, newAgt := range g1.LinksOf[agt] {
+				if visited[newAgt] {
+					// fmt.Fprintf(os.Stderr, "%sagt: %d %d already seen\n", strings.Repeat(" ", indent), agt, newAgt)
+					continue
+				}
+				_, subFail := search(g1, newAgt, visited, indent+2)
+				fail += subFail
+			}
+
+			g1.AddLink(exit, n1)
+			if fail == 0 {
+				// fmt.Fprintf(os.Stderr, "%sagt: %d %d -> %d no fail\n", strings.Repeat(" ", indent), agt, exit, n1)
+				return sol, 0
+			}
+		}
+	}
+
+	return Sol{0, 0}, 1
+}
+
+func readGraph(r io.Reader, debug bool) *Graph {
 	// N: the total number of nodes in the level, including the gateways
 	// L: the number of links
 	// E: the number of exit gateways
 	var N, L, E int
-	fmt.Scan(&N, &L, &E)
+	fmt.Fscan(r, &N, &L, &E)
+
+	if debug {
+		fmt.Fprintln(os.Stderr, N, L, E)
+	}
+
 	g := New(N, E)
 
 	for i := 0; i < L; i++ {
 		// N1: N1 and N2 defines a link between these nodes
 		var N1, N2 int
-		fmt.Scan(&N1, &N2)
+		fmt.Fscan(r, &N1, &N2)
+		if debug {
+			fmt.Fprintln(os.Stderr, N1, N2)
+		}
 		g.AddLink(N1, N2)
 	}
 	for i := 0; i < E; i++ {
-		fmt.Scan(&g.Exits[i])
+		fmt.Fscan(r, &g.Exits[i])
+		if debug {
+			fmt.Fprintln(os.Stderr, g.Exits[i])
+		}
 	}
+	return g
+}
 
+func readAgent(r io.Reader) int {
+	var SI int
+	fmt.Fscan(r, &SI)
+	return SI
+}
+
+func main() {
+	g := readGraph(os.Stdin, true)
 	for {
 		// SI: The index of the node on which the Skynet agent is positioned this turn
-		var SI int
-		fmt.Scan(&SI)
-
+		SI := readAgent(os.Stdin)
 		/*
 			For each exits find the shortest path to the agent
 			Amongst theses paths, select the shortest and cut a link
@@ -250,10 +279,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "agent is in %d\n", SI)
 		fmt.Fprintf(os.Stderr, "exits are %d\n", g.Exits)
 
-		n1, n2 := search(g, SI)
+		sol, fail := search(g, SI, make([]bool, g.Nodes), 0)
 
-		fmt.Printf("%d %d\n", n1, n2)
+		fmt.Printf("%d %d (%d)\n", sol.Exit, sol.Node, fail)
 
-		g.RemoveLink(n1, n2)
+		g.RemoveLink(sol.Exit, sol.Node)
 	}
 }

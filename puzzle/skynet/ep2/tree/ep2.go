@@ -232,14 +232,17 @@ func search(g *Graph, agt int, visited []bool, indent int) (Sol, int) {
 			fail := 0
 
 			paths := g1.ComputePathsFrom(agt)
-			closestExits := paths.FindClosest(agt, g1.Exits)
+			moves := paths.FindClosest(agt, g1.Exits)
+			if len(moves) > 1 {
+				moves = g1.LinksOf[agt]
+			}
 
-			for _, closestExit := range closestExits {
-				newAgt := g1.Move(agt, closestExit, paths)
-				// if visited[newAgt] {
-				// 	// fmt.Fprintf(os.Stderr, "%sagt: %d %d already seen\n", strings.Repeat(" ", indent), agt, newAgt)
-				// 	continue
-				// }
+			for _, move := range moves {
+				newAgt := g1.Move(agt, move, paths)
+				if visited[newAgt] {
+					// fmt.Fprintf(os.Stderr, "%sagt: %d %d already seen\n", strings.Repeat(" ", indent), agt, newAgt)
+					continue
+				}
 				_, fail = search(g1, newAgt, visited, indent+2)
 				if fail != 0 {
 					break

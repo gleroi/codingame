@@ -101,15 +101,36 @@ func (p *Paths) Get(n1 int) int {
 	return p.Costs[n1]
 }
 
-func (p *Paths) FindClosest(from int, tos []int) int {
-	closest, best := math.MaxInt32, -1
+func (p *Paths) FindClosest(from int, tos []int) []int {
+	best := make([]int, 0, len(tos))
+	closest := math.MaxInt32
 	for _, to := range tos {
+		if p.Get(to) == math.MaxInt32 {
+			continue
+		}
 		if p.Get(to) < closest {
 			closest = p.Get(to)
-			best = to
+			best = best[:0]
+			best = append(best, to)
+		} else if p.Get(to) == closest {
+			best = append(best, to)
 		}
 	}
 	return best
+}
+
+func (g *Graph) Move(agt int, to int, paths *Paths) int {
+	min, best := math.MaxInt32, -1
+	for _, prev := range g.LinksOf[to] {
+		if prev == agt {
+			return to
+		}
+		if paths.Get(prev) < min {
+			min = paths.Get(prev)
+			best = prev
+		}
+	}
+	return g.Move(agt, best, paths)
 }
 
 func dequeue(l []int) (int, []int) {
@@ -140,14 +161,6 @@ func (g *Graph) ComputePathsFrom(agt int) *Paths {
 		}
 	}
 	return paths
-}
-
-func (g *Graph) Move(from int, to int, paths *Paths) int {
-	closest := paths.FindClosest(from, g.LinksOf[to])
-	if closest == from {
-		return to
-	}
-	return g.Move(from, closest, paths)
 }
 
 // LinkToCut returns the node to cut on the shortest to exit from agent and the cost
@@ -201,25 +214,38 @@ func search(g *Graph, agt int, visited []bool, indent int) (Sol, int) {
 	visited[agt] = true
 	defer func() { visited[agt] = false }()
 
+	/*
+		This get too long to compute for example05
+		TODO: find way to remove some options.
+		 - suppose agt from to closest exit
+		   if only on
+	*/
+
 	for _, exit := range g.Exits {
 		for _, n1 := range g.LinksOf[exit] {
 			// fmt.Fprintf(os.Stderr, "%sagt: %d %d -> %d\n", strings.Repeat(" ", indent), agt, exit, n1)
-
 			g1 := g.Clone()
+
 			g1.RemoveLink(exit, n1)
 
 			sol := Sol{Exit: exit, Node: n1}
 			fail := 0
-			for _, newAgt := range g1.LinksOf[agt] {
-				if visited[newAgt] {
-					// fmt.Fprintf(os.Stderr, "%sagt: %d %d already seen\n", strings.Repeat(" ", indent), agt, newAgt)
-					continue
+
+			paths := g1.ComputePathsFrom(agt)
+			closestExits := paths.FindClosest(agt, g1.Exits)
+
+			for _, closestExit := range closestExits {
+				newAgt := g1.Move(agt, closestExit, paths)
+				// if visited[newAgt] {
+				// 	// fmt.Fprintf(os.Stderr, "%sagt: %d %d already seen\n", strings.Repeat(" ", indent), agt, newAgt)
+				// 	continue
+				// }
+				_, fail = search(g1, newAgt, visited, indent+2)
+				if fail != 0 {
+					break
 				}
-				_, subFail := search(g1, newAgt, visited, indent+2)
-				fail += subFail
 			}
 
-			g1.AddLink(exit, n1)
 			if fail == 0 {
 				// fmt.Fprintf(os.Stderr, "%sagt: %d %d -> %d no fail\n", strings.Repeat(" ", indent), agt, exit, n1)
 				return sol, 0

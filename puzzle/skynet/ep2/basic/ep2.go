@@ -197,18 +197,14 @@ func search(g *Graph, agt int) (int, int) {
 			}
 
 			// good if all neightbors should have a cost <= to the number of exit
-			fmt.Fprintf(os.Stderr, "%d -> %d\n", n1, n2)
-			for n, exitCount := range exitsNeighbors {
+			for _, exitCount := range exitsNeighbors {
 				if exitCount == 0 {
 					continue
 				}
-				fmt.Fprintf(os.Stderr, "%d: %d, ", n, exitCount)
 			}
-			fmt.Fprintln(os.Stderr)
 			good := true
 			for n, exitCount := range exitsNeighbors {
 				if exitCount > paths.Get(n) {
-					fmt.Fprintf(os.Stderr, "invalid by node %d: cost: %d, exitCount: %d\n", n, paths.Get(n), exitCount)
 					good = false
 				}
 			}

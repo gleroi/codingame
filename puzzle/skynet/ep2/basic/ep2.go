@@ -107,7 +107,7 @@ func (p *Paths) ExitCount(from, to int, g *Graph) int {
 			next = e
 		}
 	}
-	fmt.Fprintf(os.Stderr, "%d (%d) -> ", to, cnt)
+	// fmt.Fprintf(os.Stderr, "%d (%d) -> ", to, cnt)
 	if to == from {
 		return cnt
 	}
@@ -203,7 +203,7 @@ func search(g *Graph, agt int) (int, int) {
 	exitOnPath := make([]int, g.Nodes)
 	for _, n := range mostConnecteNeighbors {
 		exitOnPath[n] = paths.ExitCount(agt, n, g)
-		fmt.Fprintf(os.Stderr, "cost of %d -> %d - %d =  %d\n", n, paths.Get(n), paths.Get(n)-exitOnPath[n], exitOnPath[n])
+		// fmt.Fprintf(os.Stderr, "cost of %d -> %d - %d =  %d\n", n, paths.Get(n), paths.Get(n)-exitOnPath[n], exitOnPath[n])
 	}
 	// sort neighbor with max links by turn remaining, closest to agt
 	sort.Slice(mostConnecteNeighbors, func(i, j int) bool {
@@ -227,29 +227,48 @@ func search(g *Graph, agt int) (int, int) {
 	panic(fmt.Errorf("%d is not link to an exit", mostConnecteNeighbors[0]))
 }
 
-func main() {
+func readGraph(r io.Reader, debug bool) *Graph {
 	// N: the total number of nodes in the level, including the gateways
 	// L: the number of links
 	// E: the number of exit gateways
 	var N, L, E int
-	fmt.Scan(&N, &L, &E)
+	fmt.Fscan(r, &N, &L, &E)
+
+	if debug {
+		fmt.Fprintln(os.Stderr, N, L, E)
+	}
+
 	g := New(N, E)
 
 	for i := 0; i < L; i++ {
 		// N1: N1 and N2 defines a link between these nodes
 		var N1, N2 int
-		fmt.Scan(&N1, &N2)
+		fmt.Fscan(r, &N1, &N2)
+		if debug {
+			fmt.Fprintln(os.Stderr, N1, N2)
+		}
 		g.AddLink(N1, N2)
 	}
 	for i := 0; i < E; i++ {
-		fmt.Scan(&g.Exits[i])
+		fmt.Fscan(r, &g.Exits[i])
+		if debug {
+			fmt.Fprintln(os.Stderr, g.Exits[i])
+		}
 	}
+	return g
+}
 
+func readAgent(r io.Reader) int {
+	var SI int
+	fmt.Fscan(r, &SI)
+	return SI
+}
+
+func main() {
+	g := readGraph(os.Stdin, true)
 	for {
 		// SI: The index of the node on which the Skynet agent is positioned this turn
-		var SI int
-		fmt.Scan(&SI)
-
+		SI := readAgent(os.Stdin)
 		/*
 			For each exits find the shortest path to the agent
 			Amongst theses paths, select the shortest and cut a link

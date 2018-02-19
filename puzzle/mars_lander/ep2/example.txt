@@ -1,0 +1,672 @@
+2500 2698 0 -4 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2693m, HSpeed=0m/s VSpeed=-7m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0347
+Standard Error Stream:
+
+2500 2693 0 -7 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2683m, HSpeed=0m/s VSpeed=-11m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0447
+Standard Error Stream:
+
+2500 2683 0 -11 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2670m, HSpeed=0m/s VSpeed=-15m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0547
+Standard Error Stream:
+
+2500 2670 0 -15 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2654m, HSpeed=0m/s VSpeed=-19m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0647
+Standard Error Stream:
+
+2500 2654 0 -19 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2633m, HSpeed=0m/s VSpeed=-22m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0747
+Standard Error Stream:
+
+2500 2633 0 -22 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2609m, HSpeed=0m/s VSpeed=-26m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0847
+Standard Error Stream:
+
+2500 2609 0 -26 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2581m, HSpeed=0m/s VSpeed=-30m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+0947
+Standard Error Stream:
+
+2500 2581 0 -30 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2550m, HSpeed=0m/s VSpeed=-33m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+1047
+Standard Error Stream:
+
+2500 2550 0 -33 550 0 0
+
+Standard Output Stream:
+
+0 0
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2514m, HSpeed=0m/s VSpeed=-37m/s
+Fuel=550l, Angle=0°, Power=0 (0.0m/s2)
+
+1147
+Standard Error Stream:
+
+2500 2514 0 -37 550 0 0
+
+Standard Output Stream:
+
+0 1
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2476m, HSpeed=0m/s VSpeed=-40m/s
+Fuel=549l, Angle=0°, Power=1 (1.0m/s2)
+
+1247
+Standard Error Stream:
+
+2500 2476 0 -40 549 0 1
+
+Standard Output Stream:
+
+0 2
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2435m, HSpeed=0m/s VSpeed=-42m/s
+Fuel=547l, Angle=0°, Power=2 (2.0m/s2)
+
+1347
+Standard Error Stream:
+
+2500 2435 0 -42 547 0 2
+
+Standard Output Stream:
+
+0 3
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2393m, HSpeed=0m/s VSpeed=-42m/s
+Fuel=544l, Angle=0°, Power=3 (3.0m/s2)
+
+1447
+Standard Error Stream:
+
+2500 2393 0 -42 544 0 3
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2351m, HSpeed=0m/s VSpeed=-42m/s
+Fuel=540l, Angle=0°, Power=4 (4.0m/s2)
+
+1547
+Standard Error Stream:
+
+2500 2351 0 -42 540 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2310m, HSpeed=0m/s VSpeed=-42m/s
+Fuel=536l, Angle=0°, Power=4 (4.0m/s2)
+
+1647
+Standard Error Stream:
+
+2500 2310 0 -42 536 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2268m, HSpeed=0m/s VSpeed=-41m/s
+Fuel=532l, Angle=0°, Power=4 (4.0m/s2)
+
+1747
+Standard Error Stream:
+
+2500 2268 0 -41 532 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2227m, HSpeed=0m/s VSpeed=-41m/s
+Fuel=528l, Angle=0°, Power=4 (4.0m/s2)
+
+1847
+Standard Error Stream:
+
+2500 2227 0 -41 528 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2186m, HSpeed=0m/s VSpeed=-41m/s
+Fuel=524l, Angle=0°, Power=4 (4.0m/s2)
+
+1947
+Standard Error Stream:
+
+2500 2186 0 -41 524 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2145m, HSpeed=0m/s VSpeed=-41m/s
+Fuel=520l, Angle=0°, Power=4 (4.0m/s2)
+
+2047
+Standard Error Stream:
+
+2500 2145 0 -41 520 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2105m, HSpeed=0m/s VSpeed=-40m/s
+Fuel=516l, Angle=0°, Power=4 (4.0m/s2)
+
+2147
+Standard Error Stream:
+
+2500 2105 0 -40 516 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2065m, HSpeed=0m/s VSpeed=-40m/s
+Fuel=512l, Angle=0°, Power=4 (4.0m/s2)
+
+2247
+Standard Error Stream:
+
+2500 2065 0 -40 512 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=2025m, HSpeed=0m/s VSpeed=-40m/s
+Fuel=508l, Angle=0°, Power=4 (4.0m/s2)
+
+2347
+Standard Error Stream:
+
+2500 2025 0 -40 508 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1985m, HSpeed=0m/s VSpeed=-39m/s
+Fuel=504l, Angle=0°, Power=4 (4.0m/s2)
+
+2447
+Standard Error Stream:
+
+2500 1985 0 -39 504 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1946m, HSpeed=0m/s VSpeed=-39m/s
+Fuel=500l, Angle=0°, Power=4 (4.0m/s2)
+
+2547
+Standard Error Stream:
+
+2500 1946 0 -39 500 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1907m, HSpeed=0m/s VSpeed=-39m/s
+Fuel=496l, Angle=0°, Power=4 (4.0m/s2)
+
+2647
+Standard Error Stream:
+
+2500 1907 0 -39 496 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1869m, HSpeed=0m/s VSpeed=-38m/s
+Fuel=492l, Angle=0°, Power=4 (4.0m/s2)
+
+2747
+Standard Error Stream:
+
+2500 1869 0 -38 492 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1830m, HSpeed=0m/s VSpeed=-38m/s
+Fuel=488l, Angle=0°, Power=4 (4.0m/s2)
+
+2847
+Standard Error Stream:
+
+2500 1830 0 -38 488 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1792m, HSpeed=0m/s VSpeed=-38m/s
+Fuel=484l, Angle=0°, Power=4 (4.0m/s2)
+
+2947
+Standard Error Stream:
+
+2500 1792 0 -38 484 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1755m, HSpeed=0m/s VSpeed=-38m/s
+Fuel=480l, Angle=0°, Power=4 (4.0m/s2)
+
+3047
+Standard Error Stream:
+
+2500 1755 0 -38 480 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1717m, HSpeed=0m/s VSpeed=-37m/s
+Fuel=476l, Angle=0°, Power=4 (4.0m/s2)
+
+3147
+Standard Error Stream:
+
+2500 1717 0 -37 476 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1680m, HSpeed=0m/s VSpeed=-37m/s
+Fuel=472l, Angle=0°, Power=4 (4.0m/s2)
+
+3247
+Standard Error Stream:
+
+2500 1680 0 -37 472 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1643m, HSpeed=0m/s VSpeed=-37m/s
+Fuel=468l, Angle=0°, Power=4 (4.0m/s2)
+
+3347
+Standard Error Stream:
+
+2500 1643 0 -37 468 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1606m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=464l, Angle=0°, Power=4 (4.0m/s2)
+
+3447
+Standard Error Stream:
+
+2500 1606 0 -36 464 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1570m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=460l, Angle=0°, Power=4 (4.0m/s2)
+
+3547
+Standard Error Stream:
+
+2500 1570 0 -36 460 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1534m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=456l, Angle=0°, Power=4 (4.0m/s2)
+
+3647
+Standard Error Stream:
+
+2500 1534 0 -36 456 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1498m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=452l, Angle=0°, Power=4 (4.0m/s2)
+
+3747
+Standard Error Stream:
+
+2500 1498 0 -36 452 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1463m, HSpeed=0m/s VSpeed=-35m/s
+Fuel=448l, Angle=0°, Power=4 (4.0m/s2)
+
+3847
+Standard Error Stream:
+
+2500 1463 0 -35 448 0 4
+
+Standard Output Stream:
+
+0 3
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1427m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=445l, Angle=0°, Power=3 (3.0m/s2)
+
+3947
+Standard Error Stream:
+
+2500 1427 0 -36 445 0 3
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1391m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=441l, Angle=0°, Power=4 (4.0m/s2)
+
+4047
+Standard Error Stream:
+
+2500 1391 0 -36 441 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1356m, HSpeed=0m/s VSpeed=-35m/s
+Fuel=437l, Angle=0°, Power=4 (4.0m/s2)
+
+4147
+Standard Error Stream:
+
+2500 1356 0 -35 437 0 4
+
+Standard Output Stream:
+
+0 3
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1320m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=434l, Angle=0°, Power=3 (3.0m/s2)
+
+4247
+Standard Error Stream:
+
+2500 1320 0 -36 434 0 3
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1284m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=430l, Angle=0°, Power=4 (4.0m/s2)
+
+4347
+Standard Error Stream:
+
+2500 1284 0 -36 430 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1248m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=426l, Angle=0°, Power=4 (4.0m/s2)
+
+4447
+Standard Error Stream:
+
+2500 1248 0 -36 426 0 4
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1213m, HSpeed=0m/s VSpeed=-35m/s
+Fuel=422l, Angle=0°, Power=4 (4.0m/s2)
+
+4547
+Standard Error Stream:
+
+2500 1213 0 -35 422 0 4
+
+Standard Output Stream:
+
+0 3
+
+Game information:
+
+Landing in progress...
+X=2500m, Y=1177m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=419l, Angle=0°, Power=3 (3.0m/s2)
+
+4647
+Standard Error Stream:
+
+2500 1177 0 -36 419 0 3
+
+Standard Output Stream:
+
+0 4
+
+Game information:
+
+Failure: Mars Lander crashed on non-flat ground. Opportunity has been destroyed.
+X=2500m, Y=1167m, HSpeed=0m/s VSpeed=-36m/s
+Fuel=415l, Angle=0°, Power=4 (4.0m/s2)
+

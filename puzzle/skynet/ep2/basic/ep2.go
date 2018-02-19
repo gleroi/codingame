@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 )
 
 //import "os"
@@ -101,12 +102,34 @@ func (p *Paths) Get(n1 int) int {
 	return p.Costs[n1]
 }
 
+func (p *Paths) ExitCount(from, to int, g *Graph) int {
+	min := math.MaxInt32
+	next := -1
+	cnt := 0
+	for _, e := range g.LinksOf[to] {
+		for _, exit := range g.Exits {
+			if e == exit {
+				cnt++
+			}
+		}
+		if p.Get(e) < min {
+			min = p.Get(e)
+			next = e
+		}
+	}
+	fmt.Fprintf(os.Stderr, "%d (%d) -> ", to, cnt)
+	if to == from {
+		return cnt
+	}
+	return cnt + p.ExitCount(from, next, g)
+}
+
 func dequeue(l []int) (int, []int) {
 	n := l[0]
 	return n, l[1:]
 }
 
-func (g *Graph) ComputePathsFrom(agt int) *Paths {
+func (g *Graph) ComputePathsFrom(agt int, ignoreExit bool) *Paths {
 	visited := make(map[int]bool, g.Nodes)
 	toVisit := make([]int, 0, g.Nodes)
 	toVisit = append(toVisit, agt)
@@ -119,6 +142,17 @@ func (g *Graph) ComputePathsFrom(agt int) *Paths {
 		visited[n1] = true
 
 		for _, n2 := range g.LinksOf[n1] {
+			if ignoreExit {
+				isExit := false
+				for _, exit := range g.Exits {
+					if exit == n2 {
+						isExit = true
+					}
+				}
+				if isExit {
+					continue
+				}
+			}
 			newCost := paths.Get(n1) + 1
 			if newCost < paths.Get(n2) {
 				paths.Set(n2, newCost)
@@ -131,89 +165,76 @@ func (g *Graph) ComputePathsFrom(agt int) *Paths {
 	return paths
 }
 
-// LinkToCut returns the node to cut on the shortest to exit from agent and the cost
-// of this path
-func (g *Graph) LinkToCut(paths *Paths, exit int) (int, int) {
-	cost := paths.Get(exit)
-	n := exit
-	min := math.MaxInt32
-	for _, n1 := range g.LinksOf[exit] {
-		if paths.Get(n1) < min {
-			min = paths.Get(n1)
-			n = n1
-		}
-	}
-	return n, cost
-}
-
 func search(g *Graph, agt int) (int, int) {
 
-	// if all neighbour have a cost <= to the number of exit
-	// cut link to exit with most nodes
-	//TODO: rework this part of the strategy, probably need a tree of all decision :(
-	paths := g.ComputePathsFrom(agt)
-	exitsNeighbors := make([]int, g.Nodes)
+	// agt is next to an exit cut the link
+	paths := g.ComputePathsFrom(agt, false)
 	for _, e := range g.Exits {
-		for _, n2 := range g.LinksOf[e] {
-			exitsNeighbors[n2] += 1
+		if paths.Get(e) == 1 {
+			return e, agt
 		}
 	}
-	good := true
-	for n, exitCount := range exitsNeighbors {
-		if exitCount > paths.Get(n) {
-			fmt.Fprintf(os.Stderr, "invalid by node %d: cost: %d, exitCount: %d\n", n, paths.Get(n), exitCount)
-			good = false
+
+	// sort exits by link count (the more links, the exit will win a tie)
+	sort.Slice(g.Exits, func(i, j int) bool {
+		return len(g.LinksOf[i]) >= len(g.LinksOf[j])
+	})
+
+	// count number of linked exit for other nodes
+	exitNeighbourCount := make([]int, g.Nodes)
+	for _, e := range g.Exits {
+		for _, n := range g.LinksOf[e] {
+			exitNeighbourCount[n]++
 		}
 	}
+
+	// select the neightboor with max linked exit (where exit have most link)
+	mostConnecteNeighbors := make([]int, 0, g.Nodes)
 	max := 0
-	if good {
-		bestN := 0
-		for n, exitCount := range exitsNeighbors {
-			if exitCount > max {
-				max = exitCount
-				bestN = n
+	for _, e := range g.Exits {
+		for _, n := range g.LinksOf[e] {
+			count := exitNeighbourCount[n]
+			if count > max {
+				max = count
+				mostConnecteNeighbors = mostConnecteNeighbors[:0]
+				mostConnecteNeighbors = append(mostConnecteNeighbors, n)
+			} else if count == max {
+				mostConnecteNeighbors = append(mostConnecteNeighbors, n)
 			}
+
 		}
-		for _, e := range g.Exits {
-			if indexOf(g.LinksOf[e], bestN) != -1 {
-				return e, bestN
+	}
+
+	// if multiple, select the node with less turn to cut (the more urgent)
+	// on path from agt to a node T: the distance from agt give N turns until agt arrival to T
+	// minus the number of exit on the path (you have to cut them -> -1 occasion to cut the node T)
+	// ignore exit when computing distance -> agt does not pass by exits or you lose
+	paths = g.ComputePathsFrom(agt, true)
+	exitOnPath := make([]int, g.Nodes)
+	for _, n := range mostConnecteNeighbors {
+		exitOnPath[n] = paths.ExitCount(agt, n, g)
+		fmt.Fprintf(os.Stderr, "cost of %d -> %d - %d =  %d\n", n, paths.Get(n), paths.Get(n)-exitOnPath[n], exitOnPath[n])
+	}
+	// sort neighbor with max links by turn remaining, closest to agt
+	sort.Slice(mostConnecteNeighbors, func(i, j int) bool {
+		mi, mj := mostConnecteNeighbors[i], mostConnecteNeighbors[j]
+		ci, cj := paths.Get(mi)-exitOnPath[mi], paths.Get(mj)-exitOnPath[mj]
+		if ci < cj {
+			return true
+		} else if ci == cj {
+			return paths.Get(mi) <= paths.Get(mj)
+		}
+		return false
+	})
+
+	for _, e := range g.LinksOf[mostConnecteNeighbors[0]] {
+		for _, exit := range g.Exits {
+			if e == exit {
+				return e, mostConnecteNeighbors[0]
 			}
 		}
 	}
-
-	// this part works, but only when one gate is at risk. If no gate is at risk no
-	// solution is found.
-	for _, n1 := range g.Exits {
-		for _, n2 := range g.LinksOf[n1] {
-			g1 := g.Clone()
-			g1.RemoveLink(n1, n2)
-			paths := g1.ComputePathsFrom(agt)
-
-			exitsNeighbors := make([]int, g.Nodes)
-			for _, e := range g1.Exits {
-				for _, n2 := range g1.LinksOf[e] {
-					exitsNeighbors[n2] += 1
-				}
-			}
-
-			// good if all neightbors should have a cost <= to the number of exit
-			for _, exitCount := range exitsNeighbors {
-				if exitCount == 0 {
-					continue
-				}
-			}
-			good := true
-			for n, exitCount := range exitsNeighbors {
-				if exitCount > paths.Get(n) {
-					good = false
-				}
-			}
-			if good {
-				return n1, n2
-			}
-		}
-	}
-	panic("no solution!")
+	panic(fmt.Errorf("%d is not link to an exit", mostConnecteNeighbors[0]))
 }
 
 func main() {

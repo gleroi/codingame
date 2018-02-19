@@ -33,16 +33,6 @@ func New(N, E int) *Graph {
 	return g
 }
 
-func (g *Graph) Clone() *Graph {
-	c := New(g.Nodes, len(g.Exits))
-	copy(c.Exits, g.Exits)
-
-	for n1 := range g.LinksOf {
-		c.LinksOf[n1] = append(c.LinksOf[n1], g.LinksOf[n1]...)
-	}
-	return c
-}
-
 func (g *Graph) Print(w io.Writer, paths *Paths) {
 	fmt.Fprintln(w, "strict graph {")
 	for n1, links := range g.LinksOf {

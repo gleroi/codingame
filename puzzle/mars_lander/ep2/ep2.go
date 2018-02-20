@@ -29,7 +29,28 @@ func min(a, b int) int {
 }
 
 func distance(a, b Vec) float64 {
-	return math.Sqrt(float64((b.X-a.X)*(b.X-a.X) + (b.Y-a.Y)*(b.Y-a.Y)))
+	return math.Sqrt((b.X-a.X)*(b.X-a.X) + (b.Y-a.Y)*(b.Y-a.Y))
+}
+
+func add(a, b Vec) Vec {
+	return Vec2f(a.X+b.X, a.Y+b.Y)
+}
+
+func sub(a, b Vec) Vec {
+	return Vec2f(a.X-b.X, a.Y-b.Y)
+}
+
+func norm(a Vec) float64 {
+	return math.Sqrt(a.X*a.X + a.Y*a.Y)
+}
+
+func normalize(a Vec) Vec {
+	norm := norm(a)
+	return Vec2f(a.X/norm, a.Y/norm)
+}
+
+func neg(a Vec) Vec {
+	return Vec2f(-a.X, -a.Y)
 }
 
 type Vec struct {
@@ -44,12 +65,18 @@ func (v Vec) Scale(s float64) Vec {
 	return Vec2f(v.X*s, v.Y*s)
 }
 
-func (v Vec) Round() Vec {
-	return Vec2f(math.Round(v.X), math.Round(v.Y))
+func round(f float64) int {
+	if f < -0.5 {
+		return int(f - 0.5)
+	}
+	if f > 0.5 {
+		return int(f + 0.5)
+	}
+	return 0
 }
 
-func add(a, b Vec) Vec {
-	return Vec2f(a.X+b.X, a.Y+b.Y)
+func (v Vec) Round() Vec {
+	return Vec2f(float64(round(v.X)), float64(round(v.Y)))
 }
 
 const GravityVal = 3.711
@@ -78,7 +105,15 @@ func readSurface(r io.Reader, debug bool) *surface {
 	return &surface
 }
 
-func (s *surface) LandingZone() (Vec, Vec) {
+type Zone struct {
+	Start, End Vec
+}
+
+func (z *Zone) Middle() Vec {
+	return Vec2f(z.Start.X+(z.End.X-z.Start.X)/2, z.Start.Y)
+}
+
+func (s *surface) LandingZone() Zone {
 	var a, b Vec
 	//There is a unique area of flat ground on the surface of Mars,
 	// which is at least 1000 meters wide.
@@ -91,14 +126,14 @@ func (s *surface) LandingZone() (Vec, Vec) {
 			// if landing zone is big enough returns it
 			// else restart at pt
 			if distance(a, b) >= 1000 {
-				return a, b
+				return Zone{a, b}
 			}
 			a = pt
 			b = pt
 		}
 	}
 	if distance(a, b) >= 1000 {
-		return a, b
+		return Zone{a, b}
 	}
 	panic("landing zone not found!")
 }
@@ -116,8 +151,12 @@ type lander struct {
 }
 
 func radian(a Angle) float64 {
-	r := float64(a) * 180 / math.Pi
+	r := float64(a) * math.Pi / 180
 	return math.Pi/2 + r
+}
+
+func degree(r float64) float64 {
+	return r * 180 / math.Pi
 }
 
 func (l lander) Next(timeStep float64, power Force, rotation Angle) lander {
@@ -158,7 +197,7 @@ func main() {
 		    vertical speed must be limited ( ≤ 40m/s in absolute value)
 		    horizontal speed must be limited ( ≤ 20m/s in absolute value)
 	*/
-	_ = readSurface(os.Stdin, true)
+	surface := readSurface(os.Stdin, true)
 
 	for {
 		// hSpeed: the horizontal speed (in m/s), can be negative.
@@ -168,19 +207,57 @@ func main() {
 		// power: the thrust power (0 to 4).
 		lander := readLander(os.Stdin, true)
 
-		const minVSpeed = -35
+		const minVSpeed = 35.0
+		const minHSpeed = 15.0
 		const maxPower = 4
 		const minPower = 0
-		power := int(lander.Power)
-		// fmt.Fprintln(os.Stderr, "Debug messages...")
-		if lander.Speed.Y < minVSpeed {
-			power = min(power+1, maxPower)
 
-		} else {
-			power = max(power-1, minPower)
+		zone := surface.LandingZone()
+		debug("target pos: %v\n", zone.Middle())
+		targetDirection := normalize(sub(zone.Middle(), lander.Pos))
+		debug("target dir: %v\n", targetDirection)
+		targetSpeed := Vec2f(targetDirection.X*minHSpeed, targetDirection.Y*minVSpeed)
+
+		debug("target speed: %v\n", targetSpeed)
+
+		power := lander.Power
+		if lander.Speed.Y < targetSpeed.Y {
+			if power < maxPower {
+				power++
+			}
+		} else if lander.Speed.Y-15 > targetSpeed.Y {
+			if power > minPower {
+				power--
+			}
+		}
+
+		angle := 0
+		targetAngle := Vec2f(targetDirection.X, -targetDirection.Y)
+		rad := math.Acos(targetAngle.X)
+
+		// minAngle := -25
+		// maxAngle := 25
+		angle = round(degree(rad))
+		debug("target angle: %v (%f) (%d -> %d)\n", targetAngle, rad, angle, angle-90)
+		angle = angle - 90
+
+		maxAngle := 15
+		minAngle := -maxAngle
+		angle = min(angle, maxAngle)
+		angle = max(angle, minAngle)
+
+		if lander.Pos.X > zone.Start.X && lander.Pos.X < zone.End.X {
+			angle += 15
+			if lander.Pos.Y-zone.Middle().Y < minVSpeed*2 {
+				angle = 0
+			}
 		}
 
 		// 2 integers: rotate power. rotate is the desired rotation angle (should be 0 for level 1), power is the desired thrust power (0 to 4).
-		fmt.Println("0", power)
+		fmt.Println(angle, power)
 	}
+}
+
+func debug(format string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, v...)
 }

@@ -46,10 +46,10 @@ func TestIdentifyLandingZone(t *testing.T) {
 		r := strings.NewReader(test.input)
 		surface := readSurface(r, false)
 
-		st, end := surface.LandingZone()
-		if test.landingStart != st || test.landingEnd != end {
+		zone := surface.LandingZone()
+		if test.landingStart != zone.Start || test.landingEnd != zone.End {
 			t.Errorf("case %d: expected a landing zone %v -> %v, got %v -> %v (%fm)", testID,
-				test.landingStart, test.landingEnd, st, end, distance(st, end))
+				test.landingStart, test.landingEnd, zone.Start, zone.End, distance(zone.Start, zone.End))
 		}
 	}
 }

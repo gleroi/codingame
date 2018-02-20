@@ -14,14 +14,14 @@ import (
  * the standard input according to the problem statement.
  **/
 
-func max(a, b int) int {
+func max(a, b float64) float64 {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func min(a, b int) int {
+func min(a, b float64) float64 {
 	if a < b {
 		return a
 	}
@@ -138,20 +138,16 @@ func (s *surface) LandingZone() Zone {
 	panic("landing zone not found!")
 }
 
-type Force int
-
-type Angle int
-
 type lander struct {
 	Pos      Vec
 	Speed    Vec
 	Fuel     int
-	Rotation Angle // +/- 15
-	Power    Force // +/- 1
+	Rotation float64 // +/- 15
+	Power    float64 // +/- 1
 }
 
-func radian(a Angle) float64 {
-	r := float64(a) * math.Pi / 180
+func radian(a float64) float64 {
+	r := a * math.Pi / 180
 	return math.Pi/2 + r
 }
 
@@ -159,17 +155,17 @@ func degree(r float64) float64 {
 	return r * 180 / math.Pi
 }
 
-func (l lander) Next(timeStep float64, power Force, rotation Angle) lander {
+func (l lander) Next(timeStep float64, power float64, rotation float64) lander {
 	n := l
 
 	rad := radian(rotation)
-	accelaration := add(Gravity, Vec2f(math.Cos(rad), math.Sin(rad)).Scale(float64(power)))
+	accelaration := add(Gravity, Vec2f(math.Cos(rad), math.Sin(rad)).Scale(power))
 	n.Speed = add(l.Speed, accelaration)
 	n.Pos = add(l.Pos, add(l.Speed, accelaration.Scale(0.5*timeStep)))
 
 	n.Power = power
 	n.Rotation = rotation
-	n.Fuel = l.Fuel - int(power)
+	n.Fuel = l.Fuel - round(power)
 	return n
 }
 
@@ -198,6 +194,7 @@ func main() {
 		    horizontal speed must be limited ( ≤ 20m/s in absolute value)
 	*/
 	surface := readSurface(os.Stdin, true)
+	lander := readLander(os.Stdin, true)
 
 	for {
 		// hSpeed: the horizontal speed (in m/s), can be negative.
@@ -205,7 +202,6 @@ func main() {
 		// fuel: the quantity of remaining fuel in liters.
 		// rotate: the rotation angle in degrees (-90 to 90).
 		// power: the thrust power (0 to 4).
-		lander := readLander(os.Stdin, true)
 
 		const minVSpeed = 35.0
 		const minHSpeed = 15.0
@@ -213,48 +209,48 @@ func main() {
 		const minPower = 0
 
 		zone := surface.LandingZone()
-		debug("target pos: %v\n", zone.Middle())
-		targetDirection := normalize(sub(zone.Middle(), lander.Pos))
-		debug("target dir: %v\n", targetDirection)
-		targetSpeed := Vec2f(targetDirection.X*minHSpeed, targetDirection.Y*minVSpeed)
-
-		debug("target speed: %v\n", targetSpeed)
-
-		power := lander.Power
-		if lander.Speed.Y < targetSpeed.Y {
-			if power < maxPower {
-				power++
-			}
-		} else if lander.Speed.Y-15 > targetSpeed.Y {
-			if power > minPower {
-				power--
-			}
+		remainingSeconds := float64(lander.Fuel)
+		if lander.Power > 0 {
+			remainingSeconds /= lander.Power
 		}
 
-		angle := 0
-		targetAngle := Vec2f(targetDirection.X, -targetDirection.Y)
+		targetPos := sub(zone.Middle(), lander.Pos)
+		debug("target pos: %v\n", targetPos)
+		targetDirection := normalize(sub(targetPos, lander.Pos))
+		debug("target dir: %v\n", targetDirection)
+
+		targetSpeed := targetPos.Scale(1 / remainingSeconds)
+
+		targetAccel := sub(targetSpeed, lander.Speed)
+		targetThrust := sub(targetAccel, Gravity)
+
+		debug("target speed: %v\n", targetSpeed)
+		debug("target accel: %v\n", targetAccel)
+		debug("target thrus: %v\n", targetThrust)
+
+		power := targetThrust.Y
+		debug("target power: %v\n", power)
+		power = min(power, maxPower)
+		power = max(power, minPower)
+
+		targetAngle := normalize(targetAccel)
 		rad := math.Acos(targetAngle.X)
 
 		// minAngle := -25
 		// maxAngle := 25
-		angle = round(degree(rad))
-		debug("target angle: %v (%f) (%d -> %d)\n", targetAngle, rad, angle, angle-90)
+		angle := degree(rad)
+		debug("target angle: %v %.3f\n", targetAngle, angle-90)
 		angle = angle - 90
 
-		maxAngle := 15
-		minAngle := -maxAngle
-		angle = min(angle, maxAngle)
-		angle = max(angle, minAngle)
-
-		if lander.Pos.X > zone.Start.X && lander.Pos.X < zone.End.X {
-			angle += 15
-			if lander.Pos.Y-zone.Middle().Y < minVSpeed*2 {
-				angle = 0
-			}
+		next := lander.Next(1, power, 0)
+		if next.Pos.Y <= zone.Start.Y {
+			angle = 0
 		}
 
 		// 2 integers: rotate power. rotate is the desired rotation angle (should be 0 for level 1), power is the desired thrust power (0 to 4).
-		fmt.Println(angle, power)
+		fmt.Println(round(angle), round(power))
+		_ = readLander(os.Stdin, true)
+		lander = lander.Next(1, power, angle)
 	}
 }
 

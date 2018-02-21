@@ -214,12 +214,13 @@ func main() {
 			remainingSeconds /= lander.Power
 		}
 
-		targetPos := sub(zone.Middle(), lander.Pos)
+		next := lander.Next(1, lander.Power, lander.Rotation)
+		targetPos := add(lander.Pos, sub(zone.Middle(), lander.Pos).Scale(1/remainingSeconds))
 		debug("target pos: %v\n", targetPos)
-		targetDirection := normalize(sub(targetPos, lander.Pos))
+		targetDirection := sub(targetPos, next.Pos)
 		debug("target dir: %v\n", targetDirection)
 
-		targetSpeed := targetPos.Scale(1 / remainingSeconds)
+		targetSpeed := targetDirection
 
 		targetAccel := sub(targetSpeed, lander.Speed)
 		targetThrust := sub(targetAccel, Gravity)
@@ -242,7 +243,7 @@ func main() {
 		debug("target angle: %v %.3f\n", targetAngle, angle-90)
 		angle = angle - 90
 
-		next := lander.Next(1, power, 0)
+		next = lander.Next(1, power, 0)
 		if next.Pos.Y <= zone.Start.Y {
 			angle = 0
 		}

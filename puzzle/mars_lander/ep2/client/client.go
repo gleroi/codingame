@@ -184,7 +184,7 @@ func ReadLander(r io.Reader, debug bool) Lander {
 	return lander
 }
 
-func Client(r io.Reader, w io.Writer) {
+func Client(r io.Reader, w io.Writer, positions chan Vec) {
 	/*
 			For a landing to be successful, the ship must:
 
@@ -216,9 +216,13 @@ func Client(r io.Reader, w io.Writer) {
 		}
 
 		next := lander.Next(1, lander.Power, lander.Rotation)
-		targetPos := add(lander.Pos, sub(zone.Middle(), lander.Pos).Scale(1/remainingSeconds))
+		targetPos := add(lander.Pos, sub(zone.Middle(), lander.Pos))
+		positions <- targetPos
 		debug("target pos: %v\n", targetPos)
 		targetDirection := sub(targetPos, next.Pos)
+
+		positions <- zone.Middle()
+		positions <- targetDirection
 		debug("target dir: %v\n", targetDirection)
 
 		targetSpeed := targetDirection
@@ -253,8 +257,9 @@ func Client(r io.Reader, w io.Writer) {
 		debug("write lander data\n")
 		fmt.Fprintln(w, round(angle), round(power))
 		debug("read lander data\n")
-		next = ReadLander(r, true)
-		lander = lander.Next(1, power, angle)
+		lander = ReadLander(r, true)
+		next = lander.Next(1, power, angle).Round()
+		debug("expected: %+v\nactual: %+v\n", next, lander)
 	}
 }
 

@@ -54,7 +54,7 @@ func max(a, b int) int {
 	return b
 }
 
-func run(srvIn io.Reader, srvOut io.Writer) {
+func run(srvIn io.Reader, srvOut io.Writer, position chan client.Vec) {
 	cfg := pixelgl.WindowConfig{
 		Title:     "Pixel Rocks!",
 		Bounds:    pixel.R(0, 0, 1024, 768),
@@ -66,7 +66,7 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 		panic(err)
 	}
 
-	id := 1
+	id := 0
 
 	debug("write surface\n")
 	fmt.Fprintln(srvOut, examples[id].surface)
@@ -77,6 +77,9 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 	lander := client.ReadLander(strings.NewReader(examples[id].lander), false)
 
 	landers := make([]client.Lander, 0, 1024)
+	positions := make([]client.Vec, 0, 1024)
+	directions := make([]client.Vec, 0, 1024)
+	middle := client.Vec2f(0, 0)
 	done := false
 	play := false
 	landerId := 0
@@ -113,10 +116,31 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 			drawLander(imd, lander, colornames.White, 50)
 		} else {
 			drawLander(imd, landers[landerId], colornames.White, 50)
-		}
+			for _, l := range landers[0 : landerId+1] {
+				drawLander(imd, l, colornames.Green, 5)
+			}
 
-		for _, l := range landers[0 : landerId+1] {
-			drawLander(imd, l, colornames.Green, 5)
+			for _, p := range positions[0 : landerId+1] {
+				imd.Color = colornames.Yellow
+				imd.Push(pixel.V(p.X, p.Y))
+				imd.Circle(5, 5)
+			}
+
+			for i, p := range directions[0 : landerId+1] {
+				l := landers[i]
+				imd.Color = colornames.Violet
+				pos := pixel.V(l.Pos.X, l.Pos.Y)
+				imd.Push(pos, pos.Add(pixel.V(p.X, p.Y)))
+				imd.Line(3)
+			}
+
+			imd.Color = colornames.Blue
+			imd.Push(pixel.V(middle.X, middle.Y))
+			imd.Circle(5, 5)
+
+			z := surface.LandingZone()
+			imd.Push(pixel.V(z.Start.X, z.Start.Y), pixel.V(z.End.X, z.End.Y))
+			imd.Line(2)
 		}
 
 		imd.Draw(win)
@@ -126,6 +150,9 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 			var angle, power float64
 
 			debug("read input lander\n")
+			positions = append(positions, <-position)
+			middle = <-position
+			directions = append(directions, <-position)
 			fmt.Fscan(srvIn, &angle, &power)
 
 			if power > lander.Power {
@@ -180,7 +207,7 @@ func drawLander(imd *imdraw.IMDraw, lander client.Lander, color color.RGBA, size
 
 	imd.Color = colornames.Red
 	thrust := center.Add(pixel.V(0, -size/2))
-	imd.Push(thrust, thrust.Add(pixel.V(0, -50)))
+	imd.Push(thrust, thrust.Add(pixel.V(0, -50).Scaled(lander.Power)))
 	imd.Line(10)
 
 	imd.SetMatrix(pixel.IM)
@@ -189,10 +216,12 @@ func drawLander(imd *imdraw.IMDraw, lander client.Lander, color color.RGBA, size
 func main() {
 	cltIn, cltOut := io.Pipe()
 
-	go client.Client(cltIn, cltOut)
+	positions := make(chan client.Vec)
+
+	go client.Client(cltIn, cltOut, positions)
 
 	pixelgl.Run(func() {
-		run(cltIn, cltOut)
+		run(cltIn, cltOut, positions)
 	})
 }
 

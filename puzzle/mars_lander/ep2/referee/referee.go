@@ -47,6 +47,13 @@ var examples = []struct {
 	},
 }
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func run(srvIn io.Reader, srvOut io.Writer) {
 	cfg := pixelgl.WindowConfig{
 		Title:     "Pixel Rocks!",
@@ -59,7 +66,7 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 		panic(err)
 	}
 
-	id := 0
+	id := 1
 
 	debug("write surface\n")
 	fmt.Fprintln(srvOut, examples[id].surface)
@@ -71,8 +78,28 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 
 	landers := make([]client.Lander, 0, 1024)
 	done := false
+	play := false
+	landerId := 0
 	for !win.Closed() && !done {
 		start := time.Now()
+
+		if win.JustPressed(pixelgl.KeySpace) {
+			play = !play
+		}
+		if !play {
+			if win.Pressed(pixelgl.KeyRight) {
+				landerId = (landerId + 1) % len(landers)
+			}
+			if win.Pressed(pixelgl.KeyLeft) {
+				landerId = max(landerId-1, 0)
+			}
+			if win.Pressed(pixelgl.KeyQ) {
+				return
+			}
+		}
+		if play {
+			landerId = len(landers)
+		}
 
 		win.Clear(colornames.Black)
 		camera := pixel.IM.ScaledXY(pixel.V(0, 0),
@@ -82,49 +109,55 @@ func run(srvIn io.Reader, srvOut io.Writer) {
 		imd := imdraw.New(nil)
 		drawSurface(imd, surface)
 
-		drawLander(imd, lander, colornames.White, 50)
+		if landerId == len(landers) {
+			drawLander(imd, lander, colornames.White, 50)
+		} else {
+			drawLander(imd, landers[landerId], colornames.White, 50)
+		}
 
-		for _, l := range landers {
+		for _, l := range landers[0 : landerId+1] {
 			drawLander(imd, l, colornames.Green, 5)
 		}
 
 		imd.Draw(win)
 		win.Update()
 
-		var angle, power float64
+		if play {
+			var angle, power float64
 
-		debug("read input lander\n")
-		fmt.Fscan(srvIn, &angle, &power)
+			debug("read input lander\n")
+			fmt.Fscan(srvIn, &angle, &power)
 
-		if power > lander.Power {
-			power = math.Min(lander.Power+1, 4)
-		} else if power < lander.Power {
-			power = math.Max(0, lander.Power-1)
+			if power > lander.Power {
+				power = math.Min(lander.Power+1, 4)
+			} else if power < lander.Power {
+				power = math.Max(0, lander.Power-1)
+			}
+
+			if lander.Fuel < 0 {
+				power = 0
+			}
+
+			if angle-lander.Rotation > 15 {
+				angle = lander.Rotation + 15
+			} else if angle-lander.Rotation < -15 {
+				angle = lander.Rotation - 15
+			}
+
+			landers = append(landers, lander.Round())
+			lander = lander.Next(1, float64(power), float64(angle))
+
+			debug("write output lander\n")
+			landerR := lander.Round()
+			fmt.Fprintln(srvOut, landerR.Pos.X, landerR.Pos.Y, landerR.Speed.X, landerR.Speed.Y,
+				landerR.Fuel, landerR.Rotation, landerR.Power)
+
+			delay := time.Now().Sub(start)
+			time.Sleep((1*time.Second - delay) / (5 * time.Millisecond))
+
+			play = !(lander.Pos.X < 0 || lander.Pos.X > 7000 || lander.Pos.Y < 0 || lander.Pos.Y > 3000)
 		}
 
-		if lander.Fuel < 0 {
-			power = 0
-		}
-
-		if angle-lander.Rotation > 15 {
-			angle = lander.Rotation + 15
-		} else if angle-lander.Rotation < -15 {
-			angle = lander.Rotation - 15
-		}
-
-		landers = append(landers, lander.Round())
-		lander = lander.Next(1, float64(power), float64(angle))
-
-		debug("write output lander\n")
-		landerR := lander.Round()
-		fmt.Fprintln(srvOut, landerR.Pos.X, landerR.Pos.Y, landerR.Speed.X, landerR.Speed.Y,
-			landerR.Fuel, landerR.Rotation, landerR.Power)
-
-		delay := time.Now().Sub(start)
-		time.Sleep((1*time.Second - delay) / (5 * time.Millisecond))
-
-		done = (lander.Pos.X < 0 || lander.Pos.X > 7000 || lander.Pos.Y < 0 || lander.Pos.Y > 3000)
-		debug("done: %t\n", done)
 	}
 	debug("Closed!\n")
 }

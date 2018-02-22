@@ -154,13 +154,12 @@ func drawLander(imd *imdraw.IMDraw, lander client.Lander, color color.RGBA, size
 }
 
 func main() {
-	cltIn, srvOut := io.Pipe()
-	srvIn, cltOut := io.Pipe()
+	cltIn, cltOut := io.Pipe()
 
 	go client.Client(cltIn, cltOut)
 
 	pixelgl.Run(func() {
-		run(srvIn, srvOut)
+		run(cltIn, cltOut)
 	})
 }
 

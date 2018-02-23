@@ -56,25 +56,31 @@ const ProjectHealth = 50
 
 type Project [MoleculeCount]int
 
-func healthForProject(p Project, s Sample) float64 {
+func healthForProject(pl Player, p Project, s Sample) float64 {
 	//TODO: project is based on experience not on molecule used.
 	//TODO: use player experience to weight health gain
-	health := 0.0
-	totalExp := float64(sum(p[:]))
-	for mol, exp := range p {
-		if exp > 0 {
-			if s.ExpertiseGain == MolName[mol] {
-				health += ProjectHealth / totalExp
-			}
+	plExp := pl.Expertise
+	for mol, name := range MolName {
+		if s.ExpertiseGain == name {
+			plExp[mol]--
 		}
 	}
-	return health
+
+	turn := 0
+	for i := range plExp {
+		turn += p[i] - plExp[i]
+	}
+
+	if turn > 0 {
+		return ProjectHealth / float64(turn)
+	}
+	return ProjectHealth
 }
 
-func healthForProjects(ps []Project, s Sample) float64 {
+func healthForProjects(pl Player, ps []Project, s Sample) float64 {
 	health := 0.0
 	for _, p := range ps {
-		health += healthForProject(p, s)
+		health += healthForProject(pl, p, s)
 	}
 	return health
 }
@@ -174,8 +180,8 @@ func main() {
 				&samples[i].MoleculeCost[A], &samples[i].MoleculeCost[B], &samples[i].MoleculeCost[C], &samples[i].MoleculeCost[D], &samples[i].MoleculeCost[E])
 		}
 		sort.Slice(samples, func(i, j int) bool {
-			si := healthForProjects(projects, samples[i])
-			sj := healthForProjects(projects, samples[j])
+			si := healthForProjects(p[0], projects, samples[i])
+			sj := healthForProjects(p[0], projects, samples[j])
 			return float64(samples[i].Health)+si >= float64(samples[j].Health)+sj
 		})
 		debug("sample count: %d", sampleCount)
@@ -245,7 +251,7 @@ func SamplesState(p Player, samples []Sample, available Molecules) {
 		debug("expertise is %d (total: %d)", p.Expertise, totalExpertise)
 
 		for ; rank > 1; rank-- {
-			if Ranks[rank].CostMax-totalExpertise < 5 {
+			if float64(Ranks[rank].CostMax)-float64(totalExpertise) < 5 {
 				break
 			}
 		}
@@ -282,6 +288,8 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 			Goto(SAMP)
 			return
 		}
+
+		//TODO: take nbetter sample from cloud if possible
 
 		// get uncomplete sample and put back those that cannot be completed
 		uncompleted := sampleUncompleted(p, carried, samples)
@@ -335,6 +343,14 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 	completed := sampleCompleted(p, carried, samples)
 	if len(completed) <= 0 {
 		//TODO: check if i can swith with something from cloud
+		// check cloud for completable sample
+		uncarried := sampleUncarried(samples)
+		possible := samplePossibleToComplete(p, uncarried, available, samples)
+		if len(possible) > 0 {
+			Goto(DIAG)
+			return
+		}
+
 		Wait()
 		return
 	}
@@ -378,7 +394,7 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if canComplete(p, mol, cost, availables) {
+			if !canComplete(p, mol, cost, availables) {
 				possible = false
 				break
 			}
@@ -391,7 +407,7 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 }
 
 func canComplete(p Player, mol int, cost int, availables Molecules) bool {
-	return p.Cost(mol, cost)-p.Storage[mol] > availables[mol]
+	return p.Cost(mol, cost)-p.Storage[mol] <= availables[mol]
 }
 
 func samplePossibleToComplete(p Player, carried []int, availables Molecules, samples []Sample) []int {

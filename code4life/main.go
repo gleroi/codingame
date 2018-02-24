@@ -353,7 +353,7 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 			return
 		}
 
-		if waitInMolecules > 3 {
+		if waitInMolecules > 6 {
 			Goto(DIAG)
 			waitInMolecules = 0
 			return

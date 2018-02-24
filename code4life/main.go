@@ -306,6 +306,8 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 	}
 }
 
+var waitInMolecules = 0
+
 func MoleculesState(p Player, samples []Sample, available Molecules) {
 	if p.Eta != 0 {
 		Wait()
@@ -351,7 +353,14 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 			return
 		}
 
+		if waitInMolecules > 3 {
+			Goto(DIAG)
+			waitInMolecules = 0
+			return
+		}
+
 		Wait()
+		waitInMolecules++
 		return
 	}
 	Goto(LABO)

@@ -8,9 +8,136 @@ import (
 	"time"
 )
 
-/**
- * Bring data on patient samples from the diagnosis machine to the laboratory with enough molecules to produce medicine!
- **/
+type Player struct {
+	Target    State
+	Eta       int
+	Score     int
+	Storage   [MoleculeCount]int
+	Expertise [MoleculeCount]int
+}
+
+func (p Player) Cost(mol int, cost int) int {
+	return cost - p.Expertise[mol]
+}
+
+type Molecule int
+type Molecules [MoleculeCount]int
+
+const (
+	A Molecule = 0
+	B Molecule = 1
+	C Molecule = 2
+	D Molecule = 3
+	E Molecule = 4
+)
+
+var MolName = [5]string{"A", "B", "C", "D", "E"}
+
+type RankID int
+
+type Rank struct {
+	CostMin, CostMax int
+}
+
+var Ranks = []Rank{
+	Rank{},
+	Rank{CostMin: 3, CostMax: 5},
+	Rank{CostMin: 4, CostMax: 8},
+	Rank{CostMin: 7, CostMax: 14},
+}
+
+type Sid int
+
+type Sample struct {
+	ID            Sid
+	CarriedBy     int
+	Rank          int
+	ExpertiseGain string // indicates the molecule for which expertise is gain
+	Health        int
+	MoleculeCost  Molecules
+}
+
+func (s Sample) Diagnosed() bool {
+	return s.MoleculeCost[A] != -1
+}
+
+type State int
+
+func (s State) String() string {
+	switch s {
+	case StartState:
+		return "Start"
+	case SampleState:
+		return "Sample"
+	case DiagnosisState:
+		return "Diagnosis"
+	case MoleculesState:
+		return "Molecules"
+	case LaboratoryState:
+		return "Laboratory"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+const (
+	StartState      State = -1
+	SampleState     State = 0
+	DiagnosisState  State = 1
+	MoleculesState  State = 2
+	LaboratoryState State = 3
+)
+
+// SAMPLES 	DIAGNOSIS 	MOLECULES 	LABORATORY
+var MoveCosts = [5][5]int{
+	{0, 3, 3, 3}, // SAMPLES
+	{3, 0, 3, 4}, // DIAGNOSIS
+	{3, 3, 0, 3}, // MOLECULES
+	{3, 4, 3, 0}, // LABORATORY
+}
+
+const (
+	SAMP = "SAMPLES"
+	DIAG = "DIAGNOSIS"
+	MOLE = "MOLECULES"
+	LABO = "LABORATORY"
+)
+
+var StateByName = map[string]State{
+	"START_POS": StartState,
+	SAMP:        SampleState,
+	DIAG:        DiagnosisState,
+	MOLE:        MoleculesState,
+	LABO:        LaboratoryState,
+}
+
+const NoSample = -1
+const ME = 0
+const NoBody = 0
+
+type Game struct {
+	Players   [2]Player
+	Available Molecules
+	Samples   []Sample
+}
+
+func ApplyGoto(game Game, p int, st State) (Game, error) {
+	if game.Players[p].Eta == 0 {
+		game.Players[p].Eta = MoveCosts[game.Players[p].Target][st]
+		game.Players[p].Target = st
+	}
+	game.Players[p].Eta--
+	return game, nil
+}
+
+func ApplyConnectMol(game Game, p int, mol Molecule) (Game, error) {
+	if game.Available[mol] <= 0 {
+		return game, fmt.Errorf("no molecule %s available", MolName[mol])
+	}
+	game.Players[p].Storage[mol]++
+	game.Available[mol]--
+	return game, nil
+}
 
 func sum(s []int) int {
 	acc := 0
@@ -86,69 +213,6 @@ func healthForProjects(pl Player, ps []Project, s Sample) float64 {
 	return health
 }
 
-type Player struct {
-	Target    string
-	Eta       int
-	Score     int
-	Storage   [MoleculeCount]int
-	Expertise [MoleculeCount]int
-}
-
-func (p Player) Cost(mol int, cost int) int {
-	return cost - p.Expertise[mol]
-}
-
-type Molecules [MoleculeCount]int
-
-const (
-	A = 0
-	B = 1
-	C = 2
-	D = 3
-	E = 4
-)
-
-var MolName = [5]string{"A", "B", "C", "D", "E"}
-
-type RankID int
-
-type Rank struct {
-	CostMin, CostMax int
-}
-
-var Ranks = []Rank{
-	Rank{},
-	Rank{CostMin: 3, CostMax: 5},
-	Rank{CostMin: 4, CostMax: 8},
-	Rank{CostMin: 7, CostMax: 14},
-}
-
-type Sid int
-
-type Sample struct {
-	ID            Sid
-	CarriedBy     int
-	Rank          int
-	ExpertiseGain string // indicates the molecule for which expertise is gain
-	Health        int
-	MoleculeCost  Molecules
-}
-
-func (s Sample) Diagnosed() bool {
-	return s.MoleculeCost[A] != -1
-}
-
-const (
-	SAMP = "SAMPLES"
-	DIAG = "DIAGNOSIS"
-	MOLE = "MOLECULES"
-	LABO = "LABORATORY"
-)
-
-const NoSample = -1
-const ME = 0
-const NoBody = 0
-
 const printDebug = true
 
 func debug(v ...interface{}) {
@@ -174,10 +238,12 @@ func readPlayers(r io.Reader) [2]Player {
 	var p [2]Player
 
 	for i := 0; i < 2; i++ {
-		fmt.Fscan(r, &p[i].Target, &p[i].Eta, &p[i].Score,
+		var target string
+		fmt.Fscan(r, &target, &p[i].Eta, &p[i].Score,
 			&p[i].Storage[A], &p[i].Storage[B], &p[i].Storage[C], &p[i].Storage[D], &p[i].Storage[E],
 			&p[i].Expertise[A], &p[i].Expertise[B], &p[i].Expertise[C], &p[i].Expertise[D], &p[i].Expertise[E])
-		debug(p[i].Target, p[i].Eta, p[i].Score,
+		p[i].Target = StateByName[target]
+		debug(target, p[i].Eta, p[i].Score,
 			p[i].Storage[A], p[i].Storage[B], p[i].Storage[C], p[i].Storage[D], p[i].Storage[E],
 			p[i].Expertise[A], p[i].Expertise[B], p[i].Expertise[C], p[i].Expertise[D], p[i].Expertise[E])
 	}
@@ -252,10 +318,10 @@ func main() {
 					Send to labo
 		*/
 		debugf("target is %s", p[0].Target)
-		state, ok := states[p[0].Target]
-		if !ok {
+		if p[0].Target == StartState {
 			StartGame(p[0], samples, available)
 		} else {
+			state := states[p[0].Target]
 			state(p[0], samples, available)
 		}
 		end := time.Now()
@@ -263,11 +329,11 @@ func main() {
 	}
 }
 
-var states = map[string]func(p Player, samples []Sample, available Molecules){
-	SAMP: SamplesState,
-	DIAG: DiagnosisState,
-	MOLE: MoleculesState,
-	LABO: LaboratoryState,
+var states = [4]func(p Player, samples []Sample, available Molecules){
+	SamplesStateF,
+	DiagnosisStateF,
+	MoleculesStateF,
+	LaboratoryStateF,
 }
 
 func StartGame(p Player, samples []Sample, available Molecules) {
@@ -279,7 +345,7 @@ func StartGame(p Player, samples []Sample, available Molecules) {
 	Goto(SAMP)
 }
 
-func SamplesState(p Player, samples []Sample, available Molecules) {
+func SamplesStateF(p Player, samples []Sample, available Molecules) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -304,7 +370,7 @@ func SamplesState(p Player, samples []Sample, available Molecules) {
 	}
 }
 
-func DiagnosisState(p Player, samples []Sample, available Molecules) {
+func DiagnosisStateF(p Player, samples []Sample, available Molecules) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -350,7 +416,7 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 
 var waitInMolecules = 0
 
-func MoleculesState(p Player, samples []Sample, available Molecules) {
+func MoleculesStateF(p Player, samples []Sample, available Molecules) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -409,7 +475,7 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 	return
 }
 
-func LaboratoryState(p Player, samples []Sample, available Molecules) {
+func LaboratoryStateF(p Player, samples []Sample, available Molecules) {
 	if p.Eta != 0 {
 		Wait()
 		return

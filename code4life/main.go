@@ -63,7 +63,7 @@ func healthForProject(pl Player, p Project, s Sample) float64 {
 	plExp := pl.Expertise
 	for mol, name := range MolName {
 		if s.ExpertiseGain == name {
-			plExp[mol]--
+			plExp[mol]++
 		}
 	}
 
@@ -147,7 +147,7 @@ const (
 
 const NoSample = -1
 const ME = 0
-const NoBody = 0
+const NoBody = -1
 
 const printDebug = true
 
@@ -206,6 +206,11 @@ func readSamples(r io.Reader) []Sample {
 	return samples
 }
 
+func SampleHealth(p Player, projects []Project, s Sample) float64 {
+	si := healthForProjects(p, projects, s)
+	return float64(s.Health) + si
+}
+
 func main() {
 	projects := readProjects(os.Stdin)
 	for {
@@ -217,14 +222,7 @@ func main() {
 
 		samples := readSamples(os.Stdin)
 		sort.Slice(samples, func(i, j int) bool {
-			si := healthForProjects(p[0], projects, samples[i])
-			sj := healthForProjects(p[0], projects, samples[j])
-			return float64(samples[i].Health)+si >= float64(samples[j].Health)+sj
-		})
-		sort.Slice(samples, func(i, j int) bool {
-			si := healthForProjects(p[0], projects, samples[i])
-			sj := healthForProjects(p[0], projects, samples[j])
-			return float64(samples[i].Health)+si >= float64(samples[j].Health)+sj
+			return SampleHealth(p[0], projects, samples[i]) >= SampleHealth(p[0], projects, samples[j])
 		})
 		debugf("sample count: %d", len(samples))
 
@@ -256,14 +254,14 @@ func main() {
 		if !ok {
 			StartGame(p[0], samples, available)
 		} else {
-			state(p[0], samples, available)
+			state(p[0], samples, available, projects)
 		}
 		end := time.Now()
 		debugf("Turn completed in %dms", end.Sub(start).Nanoseconds()/1000000.0)
 	}
 }
 
-var states = map[string]func(p Player, samples []Sample, available Molecules){
+var states = map[string]func(p Player, samples []Sample, available Molecules, projects []Project){
 	SAMP: SamplesState,
 	DIAG: DiagnosisState,
 	MOLE: MoleculesState,
@@ -279,7 +277,7 @@ func StartGame(p Player, samples []Sample, available Molecules) {
 	Goto(SAMP)
 }
 
-func SamplesState(p Player, samples []Sample, available Molecules) {
+func SamplesState(p Player, samples []Sample, available Molecules, projects []Project) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -304,7 +302,7 @@ func SamplesState(p Player, samples []Sample, available Molecules) {
 	}
 }
 
-func DiagnosisState(p Player, samples []Sample, available Molecules) {
+func DiagnosisState(p Player, samples []Sample, available Molecules, projects []Project) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -331,26 +329,38 @@ func DiagnosisState(p Player, samples []Sample, available Molecules) {
 			return
 		}
 
-		//TODO: take nbetter sample from cloud if possible
-
 		// get uncomplete sample and put back those that cannot be completed
 		uncompleted := sampleUncompleted(p, carried, samples)
 		impossible := sampleImpossibleToComplete(p, uncompleted, available, samples)
 
 		if len(impossible) > 0 {
 			debugf("available: %d", available)
-			debugf("sample %d: %d", samples[impossible[0]].ID, samples[impossible[0]].MoleculeCost)
+			debugf("impossible sample %d: %d", samples[impossible[0]].ID, samples[impossible[0]].MoleculeCost)
 			ConnectSample(samples[impossible[0]].ID)
 			return
 		}
 
+		// take better sample from cloud if possible
+		uncarried := sampleUncarried(samples)
+		possible := samplePossibleToComplete(p, uncarried, available, samples)
+		if len(possible) > 0 {
+			for i := 0; i < len(uncompleted); i++ {
+				ps := SampleHealth(p, projects, samples[possible[0]])
+				us := SampleHealth(p, projects, samples[uncompleted[i]])
+				if ps > us {
+					debugf("sample %d is better than %d (%f > %f)", samples[possible[0]].ID, samples[uncompleted[i]].ID, ps, us)
+					ConnectSample(samples[uncompleted[i]].ID)
+					return
+				}
+			}
+		}
 		Goto(MOLE)
 	}
 }
 
 var waitInMolecules = 0
 
-func MoleculesState(p Player, samples []Sample, available Molecules) {
+func MoleculesState(p Player, samples []Sample, available Molecules, projects []Project) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -409,7 +419,7 @@ func MoleculesState(p Player, samples []Sample, available Molecules) {
 	return
 }
 
-func LaboratoryState(p Player, samples []Sample, available Molecules) {
+func LaboratoryState(p Player, samples []Sample, available Molecules, projects []Project) {
 	if p.Eta != 0 {
 		Wait()
 		return
@@ -445,7 +455,7 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if !canComplete(p, mol, cost, availables) {
+			if !canComplete(p, mol, cost-1, availables) {
 				possible = false
 				break
 			}
@@ -468,7 +478,7 @@ func samplePossibleToComplete(p Player, carried []int, availables Molecules, sam
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if canComplete(p, mol, cost, availables) {
+			if !canComplete(p, mol, cost-1, availables) {
 				possible = false
 				break
 			}

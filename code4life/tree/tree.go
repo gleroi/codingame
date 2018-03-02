@@ -21,6 +21,11 @@ func (p Player) Cost(mol int, cost int) int {
 }
 
 type Molecule int
+
+func (m Molecule) String() string {
+	return MolName[m]
+}
+
 type Molecules [MoleculeCount]int
 
 const (
@@ -121,13 +126,67 @@ type Game struct {
 	Samples   []Sample
 }
 
-func ApplyGoto(game Game, p int, st State) (Game, error) {
-	if game.Players[p].Eta == 0 {
-		game.Players[p].Eta = MoveCosts[game.Players[p].Target][st]
-		game.Players[p].Target = st
+type Action interface {
+	Validate(game Game, p int) error
+	Apply(game Game, p int) Game
+}
+
+func Apply(game Game, p0 Action, p1 Action) Game {
+	acts := []Action{p0, p1}
+	for p, act := range acts {
+		err := act.Validate(game, p)
+		if err != nil {
+			panic(err)
+		}
 	}
-	game.Players[p].Eta--
-	return game, nil
+
+	for p, act := range acts {
+		if game.Players[p].Eta == 0 {
+			game = act.Apply(game, p)
+		}
+		if game.Players[p].Eta > 0 {
+			game.Players[p].Eta--
+		}
+	}
+	return game
+}
+
+type GotoAct struct {
+	Target State
+}
+
+func (act GotoAct) Validate(game Game, p int) error {
+	return nil
+}
+
+func (act GotoAct) Apply(game Game, p int) Game {
+	game.Players[p].Eta = MoveCosts[game.Players[p].Target][act.Target]
+	game.Players[p].Target = act.Target
+	return game
+}
+
+type ConnectMolAct struct {
+	Mol Molecule
+}
+
+const MaxStorage = 10
+
+func (act ConnectMolAct) Validate(game Game, p int) error {
+	if game.Available[act.Mol] <= 0 {
+		return fmt.Errorf("no more molecule %s", act.Mol)
+	}
+
+	if sum(game.Players[p].Storage[:]) >= MaxStorage {
+		return fmt.Errorf("storage of player %d is full", p)
+	}
+
+	return nil
+}
+
+func (act ConnectMolAct) Apply(game Game, p int) Game {
+	game.Players[p].Storage[act.Mol]++
+	game.Available[act.Mol]--
+	return game
 }
 
 func ApplyConnectMol(game Game, p int, mol Molecule) (Game, error) {

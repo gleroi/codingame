@@ -277,6 +277,19 @@ func StartGame(p Player, samples []Sample, available Molecules) {
 	Goto(SAMP)
 }
 
+func (p Player) SelectRank() RankID {
+	rank := 3
+	totalExpertise := sum(p.Expertise[:])
+	debugf("expertise is %d (total: %d)", p.Expertise, totalExpertise)
+
+	for ; rank > 1; rank-- {
+		if float64(Ranks[rank].CostMax)-float64(totalExpertise) < 5 {
+			break
+		}
+	}
+	return RankID(rank)
+}
+
 func SamplesState(p Player, samples []Sample, available Molecules, projects []Project) {
 	if p.Eta != 0 {
 		Wait()
@@ -286,17 +299,9 @@ func SamplesState(p Player, samples []Sample, available Molecules, projects []Pr
 	carried := sampleCarried(samples)
 	debugf("%d samples carried", len(carried))
 	if len(carried) < 3 {
-		rank := 3
-		totalExpertise := sum(p.Expertise[:])
-		debugf("expertise is %d (total: %d)", p.Expertise, totalExpertise)
-
-		for ; rank > 1; rank-- {
-			if float64(Ranks[rank].CostMax)-float64(totalExpertise) < 5 {
-				break
-			}
-		}
+		rank := p.SelectRank()
 		debugf("ask undiagnosed samples target (rk %d)", rank)
-		ConnectRank(RankID(rank), fmt.Sprintf("carrying %d", len(carried)))
+		ConnectRank(rank, fmt.Sprintf("carrying %d", len(carried)))
 	} else {
 		Goto(DIAG)
 	}
@@ -396,7 +401,7 @@ func MoleculesState(p Player, samples []Sample, available Molecules, projects []
 
 	completed := sampleCompleted(p, carried, samples)
 	if len(completed) <= 0 {
-		//TODO: check if i can swith with something from cloud
+		// check if i can switch with something from cloud
 		// check cloud for completable sample
 		uncarried := sampleUncarried(samples)
 		possible := samplePossibleToComplete(p, uncarried, available, samples)
@@ -405,7 +410,7 @@ func MoleculesState(p Player, samples []Sample, available Molecules, projects []
 			return
 		}
 
-		if waitInMolecules > 6 {
+		if waitInMolecules > 3 {
 			Goto(DIAG)
 			waitInMolecules = 0
 			return
@@ -426,26 +431,42 @@ func LaboratoryState(p Player, samples []Sample, available Molecules, projects [
 	}
 
 	carried := sampleCarried(samples)
-	completed := sampleCompleted(p, carried, samples)
-
 	if len(carried) == 0 {
+		// check cloud for completable sample
+		uncarried := sampleUncarried(samples)
+		possible := samplePossibleToComplete(p, uncarried, available, samples)
+		interesting := sampleWithRank(p, possible, p.SelectRank(), samples)
+		if len(interesting) > 1 {
+			Goto(DIAG)
+			return
+		}
+
 		Goto(SAMP)
 		return
 	}
+
+	completed := sampleCompleted(p, carried, samples)
 	if len(completed) == 0 {
-		Goto(MOLE)
+		possible := samplePossibleToComplete(p, carried, available, samples)
+		if len(possible) > 0 {
+			Goto(MOLE)
+			return
+		}
+
+		if len(possible) == 0 {
+			uncarried := sampleUncarried(samples)
+			possible := samplePossibleToComplete(p, uncarried, available, samples)
+			interesting := sampleWithRank(p, possible, p.SelectRank(), samples)
+			if len(interesting) > 1 {
+				Goto(DIAG)
+				return
+			}
+		}
+		Goto(SAMP)
 		return
 	}
 
-	health, bestId := -1, -1
-	for _, id := range completed {
-		s := samples[id]
-		if s.Health > health {
-			health = s.Health
-			bestId = id
-		}
-	}
-	ConnectSample(samples[bestId].ID)
+	ConnectSample(samples[completed[0]].ID)
 }
 
 func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, samples []Sample) []int {
@@ -455,7 +476,7 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if !canComplete(p, mol, cost-1, availables) {
+			if !canComplete(p, mol, cost, availables) {
 				possible = false
 				break
 			}
@@ -478,7 +499,7 @@ func samplePossibleToComplete(p Player, carried []int, availables Molecules, sam
 
 		possible := true
 		for mol, cost := range s.MoleculeCost {
-			if !canComplete(p, mol, cost-1, availables) {
+			if !canComplete(p, mol, cost, availables) {
 				possible = false
 				break
 			}
@@ -553,6 +574,17 @@ func sampleUncarried(samples []Sample) []int {
 	uncarried := make([]int, 0, 3)
 	for id, s := range samples {
 		if s.CarriedBy == NoBody {
+			uncarried = append(uncarried, id)
+		}
+	}
+	return uncarried
+}
+
+func sampleWithRank(p Player, carried []int, rank RankID, samples []Sample) []int {
+	uncarried := make([]int, 0, len(carried))
+	for _, id := range carried {
+		s := samples[id]
+		if s.Rank == int(rank) {
 			uncarried = append(uncarried, id)
 		}
 	}

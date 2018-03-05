@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"time"
@@ -58,14 +59,12 @@ const ProjectHealth = 50
 type Project [MoleculeCount]int
 
 func healthForProject(pl Player, p Project, s Sample) float64 {
-	//TODO: project is based on experience not on molecule used.
-	//TODO: use player experience to weight health gain
 	plExp := pl.Expertise
-	for mol, name := range MolName {
-		if s.ExpertiseGain == name {
-			plExp[mol]++
-		}
-	}
+	// for mol, name := range MolName {
+	// 	if s.ExpertiseGain == name {
+	// 		plExp[mol]++
+	// 	}
+	// }
 
 	turn := 0
 	for i := range plExp {
@@ -78,7 +77,28 @@ func healthForProject(pl Player, p Project, s Sample) float64 {
 	if turn > 0 {
 		return ProjectHealth / float64(turn)
 	}
-	return ProjectHealth
+	return 0 // no turn, the project is already completed
+}
+
+func minProjects(pl Player, ps []Project) Project {
+	plExp := pl.Expertise
+
+	var min Project
+	minTurn := math.MaxInt32
+	for _, p := range ps {
+		var turn int
+		for i := range plExp {
+			delta := p[i] - plExp[i]
+			if delta > 0 {
+				turn += delta
+			}
+		}
+		if turn > 0 && turn < minTurn {
+			minTurn = turn
+			min = p
+		}
+	}
+	return min
 }
 
 func healthForProjects(pl Player, ps []Project, s Sample) float64 {
@@ -117,13 +137,14 @@ type RankID int
 
 type Rank struct {
 	CostMin, CostMax int
+	HealthMin        int
 }
 
 var Ranks = []Rank{
 	Rank{},
-	Rank{CostMin: 3, CostMax: 5},  // Health 1 or 10
-	Rank{CostMin: 4, CostMax: 8},  // Health 10, 20 or 30
-	Rank{CostMin: 7, CostMax: 14}, // Health 30, 40 or 50
+	Rank{CostMin: 3, CostMax: 5, HealthMin: 1},   // Health 1 or 10
+	Rank{CostMin: 4, CostMax: 8, HealthMin: 10},  // Health 10, 20 or 30
+	Rank{CostMin: 7, CostMax: 14, HealthMin: 30}, // Health 30, 40 or 50
 }
 
 type Sid int
@@ -209,9 +230,8 @@ func readSamples(r io.Reader) []Sample {
 	return samples
 }
 
-func SampleHealth(p Player, projects []Project, s Sample) float64 {
-	// si := healthForProjects(p, projects, s)
-	return float64(s.Health) // + si
+func SampleHealth(p Player, project []Project, s Sample) float64 {
+	return float64(s.Health) + healthForProjects(p, project, s)
 }
 
 func main() {
@@ -224,6 +244,7 @@ func main() {
 		available := readAvailableMols(os.Stdin)
 
 		samples := readSamples(os.Stdin)
+		// bestProject := minProjects(p[0], projects)
 		sort.Slice(samples, func(i, j int) bool {
 			return SampleHealth(p[0], projects, samples[i]) >= SampleHealth(p[0], projects, samples[j])
 		})
@@ -304,6 +325,9 @@ func SamplesState(p Player, samples []Sample, available Molecules, projects []Pr
 	if len(carried) < 3 {
 		rank := p.SelectRank()
 		debugf("ask undiagnosed samples target (rk %d)", rank)
+		if len(carried) == 2 && rank < 3 {
+			rank = rank + 1
+		}
 		ConnectRank(rank, fmt.Sprintf("carrying %d", len(carried)))
 	} else {
 		Goto(DIAG)
@@ -351,6 +375,7 @@ func DiagnosisState(p Player, samples []Sample, available Molecules, projects []
 		// take better sample from cloud if possible
 		uncarried := sampleUncarried(samples)
 		possible := samplePossibleToComplete(p, uncarried, available, samples)
+		//bestProject := minProjects(p, projects)
 		if len(possible) > 0 {
 			for i := 0; i < len(uncompleted); i++ {
 				ps := SampleHealth(p, projects, samples[possible[0]])
@@ -398,8 +423,27 @@ func MoleculesState(p Player, samples []Sample, available Molecules, projects []
 			}
 		}
 
-		//TODO: take more molecule than needed to prevent opponent to fullfill
-		// or to optimize for sample in cloud
+		{
+			//TODO: take more molecule than needed to prevent opponent to fullfill
+			// or to optimize for sample in cloud
+			uncarried := sampleUncarried(samples)
+			possible := samplePossibleToComplete(p, uncarried, available, samples)
+			uncompleted := sampleUncompleted(p, possible, samples)
+			for _, id := range uncompleted {
+				s := samples[id]
+				debugf("sample %d cost: %d", id, s.MoleculeCost)
+				for mol, cost := range s.MoleculeCost {
+					if p.Cost(mol, cost)-p.Storage[mol] <= 0 {
+						continue
+					}
+					if available[mol] <= 0 {
+						continue
+					}
+					ConnectMol(MolName[mol])
+					return
+				}
+			}
+		}
 	}
 
 	completed := sampleCompleted(p, carried, samples)
@@ -438,7 +482,7 @@ func LaboratoryState(p Player, samples []Sample, available Molecules, projects [
 		// check cloud for completable sample
 		uncarried := sampleUncarried(samples)
 		possible := samplePossibleToComplete(p, uncarried, available, samples)
-		interesting := sampleWithRank(p, possible, p.SelectRank(), samples)
+		interesting := sampleWithScoreGreater(p, possible, Ranks[p.SelectRank()].HealthMin, projects, samples)
 		if len(interesting) > 1 {
 			Goto(DIAG)
 			return
@@ -459,7 +503,7 @@ func LaboratoryState(p Player, samples []Sample, available Molecules, projects [
 		if len(possible) == 0 {
 			uncarried := sampleUncarried(samples)
 			possible := samplePossibleToComplete(p, uncarried, available, samples)
-			interesting := sampleWithRank(p, possible, p.SelectRank(), samples)
+			interesting := sampleWithScoreGreater(p, possible, Ranks[p.SelectRank()].HealthMin, projects, samples)
 			if len(interesting) > 1 {
 				Goto(DIAG)
 				return
@@ -587,6 +631,17 @@ func sampleWithRank(p Player, carried []int, rank RankID, samples []Sample) []in
 	for _, id := range carried {
 		s := samples[id]
 		if s.Rank == int(rank) {
+			uncarried = append(uncarried, id)
+		}
+	}
+	return uncarried
+}
+
+func sampleWithScoreGreater(p Player, carried []int, minHealth int, projects []Project, samples []Sample) []int {
+	uncarried := make([]int, 0, len(carried))
+	for _, id := range carried {
+		s := samples[id]
+		if SampleHealth(p, projects, s) > float64(minHealth) {
 			uncarried = append(uncarried, id)
 		}
 	}

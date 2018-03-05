@@ -69,7 +69,10 @@ func healthForProject(pl Player, p Project, s Sample) float64 {
 
 	turn := 0
 	for i := range plExp {
-		turn += p[i] - plExp[i]
+		delta := p[i] - plExp[i]
+		if delta > 0 {
+			turn += delta
+		}
 	}
 
 	if turn > 0 {
@@ -118,9 +121,9 @@ type Rank struct {
 
 var Ranks = []Rank{
 	Rank{},
-	Rank{CostMin: 3, CostMax: 5},
-	Rank{CostMin: 4, CostMax: 8},
-	Rank{CostMin: 7, CostMax: 14},
+	Rank{CostMin: 3, CostMax: 5},  // Health 1 or 10
+	Rank{CostMin: 4, CostMax: 8},  // Health 10, 20 or 30
+	Rank{CostMin: 7, CostMax: 14}, // Health 30, 40 or 50
 }
 
 type Sid int
@@ -207,8 +210,8 @@ func readSamples(r io.Reader) []Sample {
 }
 
 func SampleHealth(p Player, projects []Project, s Sample) float64 {
-	si := healthForProjects(p, projects, s)
-	return float64(s.Health) + si
+	// si := healthForProjects(p, projects, s)
+	return float64(s.Health) // + si
 }
 
 func main() {
@@ -474,22 +477,28 @@ func sampleImpossibleToComplete(p Player, carried []int, availables Molecules, s
 	for _, id := range carried {
 		s := samples[id]
 
-		possible := true
-		for mol, cost := range s.MoleculeCost {
-			if !canComplete(p, mol, cost, availables) {
-				possible = false
-				break
-			}
-		}
-		if !possible {
+		if !canComplete(p, s, availables) {
 			result = append(result, id)
 		}
 	}
 	return result
 }
 
-func canComplete(p Player, mol int, cost int, availables Molecules) bool {
-	return p.Cost(mol, cost)-p.Storage[mol] <= availables[mol]
+func canComplete(p Player, s Sample, availables Molecules) bool {
+	totalNeeded := 0
+	for mol, cost := range s.MoleculeCost {
+		needed := p.Cost(mol, cost) - p.Storage[mol]
+		totalNeeded += needed
+		if needed > availables[mol] {
+			return false
+		}
+	}
+
+	totalStorage := sum(p.Storage[:])
+	if totalStorage+totalNeeded > 10 {
+		return false
+	}
+	return true
 }
 
 func samplePossibleToComplete(p Player, carried []int, availables Molecules, samples []Sample) []int {
@@ -497,14 +506,7 @@ func samplePossibleToComplete(p Player, carried []int, availables Molecules, sam
 	for _, id := range carried {
 		s := samples[id]
 
-		possible := true
-		for mol, cost := range s.MoleculeCost {
-			if !canComplete(p, mol, cost, availables) {
-				possible = false
-				break
-			}
-		}
-		if possible {
+		if canComplete(p, s, availables) {
 			result = append(result, id)
 		}
 	}

@@ -60,11 +60,11 @@ type Project [MoleculeCount]int
 
 func healthForProject(pl Player, p Project, s Sample) float64 {
 	plExp := pl.Expertise
-	// for mol, name := range MolName {
-	// 	if s.ExpertiseGain == name {
-	// 		plExp[mol]++
-	// 	}
-	// }
+	for mol, name := range MolName {
+		if s.ExpertiseGain == name {
+			plExp[mol]++
+		}
+	}
 
 	turn := 0
 	for i := range plExp {
@@ -76,6 +76,8 @@ func healthForProject(pl Player, p Project, s Sample) float64 {
 
 	if turn > 0 {
 		return ProjectHealth / float64(turn)
+	} else if turn == 0 {
+		return ProjectHealth * 1.5
 	}
 	return 0 // no turn, the project is already completed
 }
@@ -420,28 +422,6 @@ func MoleculesState(p Player, samples []Sample, available Molecules, projects []
 				}
 				ConnectMol(MolName[mol])
 				return
-			}
-		}
-
-		{
-			//TODO: take more molecule than needed to prevent opponent to fullfill
-			// or to optimize for sample in cloud
-			uncarried := sampleUncarried(samples)
-			possible := samplePossibleToComplete(p, uncarried, available, samples)
-			uncompleted := sampleUncompleted(p, possible, samples)
-			for _, id := range uncompleted {
-				s := samples[id]
-				debugf("sample %d cost: %d", id, s.MoleculeCost)
-				for mol, cost := range s.MoleculeCost {
-					if p.Cost(mol, cost)-p.Storage[mol] <= 0 {
-						continue
-					}
-					if available[mol] <= 0 {
-						continue
-					}
-					ConnectMol(MolName[mol])
-					return
-				}
 			}
 		}
 	}

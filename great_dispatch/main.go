@@ -104,9 +104,6 @@ func delta(trucks []Truck) Delta {
 
 func (d Delta) Update(trucks ...Truck) Delta {
 	for _, t := range trucks {
-		if t.Weight == 0 {
-			continue
-		}
 		if d.MinT == t.ID {
 			d.Min = t.Weight
 		}
@@ -127,6 +124,7 @@ func (d Delta) Update(trucks ...Truck) Delta {
 }
 
 func firstfit(boxes []Box, trucks []Truck) {
+	//TODO: modify to put boxes in all trucks
 	bIds := make([]int, len(boxes))
 	for id := range boxes {
 		bIds[id] = id
@@ -157,6 +155,14 @@ func firstfit(boxes []Box, trucks []Truck) {
 			boxes[b].Truck = bestT
 		}
 	}
+}
+
+func split(boxes []Box, trucks []Truck, T1, T2 int) {
+	// all boxes are in one truck T1
+	// split boxes in two truck T1 and T2'
+	// such as: weight are equal
+	// until T and T' volume is less than 100
+
 }
 
 func findBoxes(boxes []Box, t int) []int {
@@ -254,6 +260,10 @@ func fillTrucks(boxes []Box, trucks []Truck) {
 	}
 }
 
+const DEBUG = false
+
 func debug(format string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, v...)
+	if DEBUG {
+		fmt.Fprintf(os.Stderr, format, v...)
+	}
 }

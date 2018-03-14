@@ -7,6 +7,8 @@ Problem
 Given N boxes Bj of weight and volume Wj, Vj
 and M trucks Ti of capacity Ci (max = 100)
 
+Need to put boxes in ALL trucks
+
 A_ij = 1 if Bj is in Ti else 0
 
 Find a solution such as:
